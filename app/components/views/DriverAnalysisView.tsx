@@ -15,10 +15,6 @@ type ModelPrediction = {
   validation: { temperatureMaeC: number; temperatureR2: number; hotspotRocAuc: number; hotspotF1: number };
 };
 
-const featureLabel = (feature: string) => feature
-  .replace(/_/g, " ")
-  .replace(/\b\w/g, (letter) => letter.toUpperCase());
-
 interface DriverAnalysisViewProps {
   city: CityName;
   season: SeasonName;
@@ -55,8 +51,8 @@ export default function DriverAnalysisView({
   const analysisTarget = targetIsWard ? activeHotspot?.name : (selectedArea?.name ?? city);
 
   if (!activeHotspot) return null;
-  const modelDrivers = modelPrediction?.keyDrivers.slice(0, 6) ?? [];
-  const maxDriverImportance = Math.max(...modelDrivers.map((driver) => driver.importance), 1);
+  const physicalDrivers = activeHotspot.driverBreakdown.slice(0, 5);
+  const maxDriverImpact = Math.max(...physicalDrivers.map((driver) => Math.abs(driver.val)), 1);
   const env = currentSeasonData.env;
   const parameterRows: Array<[string, string]> = selectedAreaMatchesCity ? [
     ["Canopy Cover Fraction", activeHotspot.canopyCover],
@@ -103,7 +99,7 @@ export default function DriverAnalysisView({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8E5] pb-2">
         <div>
           <span className="font-mono text-[8.5px] uppercase tracking-wider text-[#174D46] font-bold">
-            XGBOOST INFERENCE · MODEL FEATURE ATTRIBUTION
+            XGBOOST INFERENCE · LOCAL PHYSICAL HEAT EXPLANATION
           </span>
           <h2 className="font-sans text-base sm:text-lg font-bold text-[#162220]">
             Physical Heat Driver Breakdown · {analysisTarget}
@@ -136,42 +132,43 @@ export default function DriverAnalysisView({
 
       {/* Main Grid: SHAP Horizontal Bar Chart + Physical Validation Evidence */}
       <div className="grid min-w-0 grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left: SHAP Horizontal Contribution Chart */}
+        {/* Left: user-facing physical driver explanation */}
         <div className="min-w-0 lg:col-span-7 border border-[#E2E8E5] bg-white p-4 shadow-xs rounded-xs">
           <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#EDF2EF]">
             <div>
               <h3 className="font-sans text-xs sm:text-sm font-bold text-[#162220]">
-                Model-Derived Driver Importance
+                Why this location is hot
               </h3>
               <p className="font-mono text-[9.5px] text-[#5C6E6A] mt-0.5">
                 Target: {analysisTarget} · Modeled LST: <strong>{modelPrediction ? `${modelPrediction.predictedLstC.toFixed(1)}°C` : "Computing…"}</strong>
               </p>
             </div>
-            <span className="font-mono text-[8.5px] text-[#174D46] font-semibold">GAIN IMPORTANCE</span>
+            <span className="font-mono text-[8.5px] text-[#174D46] font-semibold">LOCAL HEAT CONTRIBUTION</span>
           </div>
 
           {/* Horizontal Contribution Bars */}
           <div className="space-y-3 pt-1">
-            {modelDrivers.map((driver, idx) => {
-              const barWidth = Math.max(4, (driver.importance / maxDriverImportance) * 100);
+            {physicalDrivers.map((driver, idx) => {
+              const barWidth = Math.max(4, (Math.abs(driver.val) / maxDriverImpact) * 100);
+              const heating = driver.val >= 0;
 
               return (
                 <div key={idx} className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-sans text-xs font-medium text-[#162220]">
-                      {featureLabel(driver.feature)}
+                      {driver.name}
                     </span>
                     <span
                       className="font-mono text-xs font-bold text-[#174D46]"
                     >
-                      {((driver.importance / maxDriverImportance) * 100).toFixed(1)}%
+                      {heating ? "+" : ""}{driver.val.toFixed(1)}°C {heating ? "heating" : "cooling"}
                     </span>
                   </div>
 
                   {/* Full-width contribution magnitude track */}
                   <div className="w-full h-2.5 bg-[#F4F7F5] border border-[#E2E8E5] rounded-xs relative overflow-hidden">
                     <div
-                      className="h-full absolute inset-y-0 left-0 transition-[width] duration-300 bg-gradient-to-r from-[#2E766B] to-[#174D46]"
+                      className={`h-full absolute inset-y-0 left-0 transition-[width] duration-300 ${heating ? "bg-gradient-to-r from-[#E66A37] to-[#C93B2B]" : "bg-gradient-to-r from-[#5A9E7A] to-[#174D46]"}`}
                       style={{ width: `${barWidth}%` }}
                     />
                   </div>
@@ -181,7 +178,7 @@ export default function DriverAnalysisView({
           </div>
 
           <div className="mt-4 pt-2.5 border-t border-[#EDF2EF] bg-[#FAFBFA] p-2.5 font-mono text-[9px] text-[#5C6E6A] rounded-xs">
-            ℹ <strong>LIVE INFERENCE:</strong> Importance values are returned by model {modelPrediction?.modelVersion ?? "XGBoost"}. {modelPrediction?.imputedFeatures.length ?? 0} unavailable inputs were filled from the training profile.
+            ℹ <strong>HOW TO READ THIS:</strong> Red factors add heat; green factors reduce it. Values are the local physical contribution estimate for this hotspot, displayed in °C—not opaque model-feature percentages. {modelPrediction?.imputedFeatures.length ? `${modelPrediction.imputedFeatures.length} secondary model inputs were profile-filled.` : "All required model inputs are available."}
           </div>
         </div>
 
