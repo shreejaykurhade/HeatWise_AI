@@ -3,6 +3,7 @@
 import { Hotspot, CityName, SeasonName, CITIES_DATA } from "../../data/heatData";
 import type { AreaOption } from "../layout/GlobalHeader";
 import type { InferenceTargetOption } from "../../page";
+import { computeSurfaceEnergyBalance } from "../../../lib/surface-energy-pinn";
 
 type ModelPrediction = {
   predictedLstC: number;
@@ -79,6 +80,25 @@ export default function DriverAnalysisView({
   const physicalDrivers = activeHotspot.driverBreakdown.slice(0, 5);
   const maxDriverImpact = Math.max(...physicalDrivers.map((driver) => Math.abs(driver.val)), 1);
   const env = currentSeasonData.env;
+  const seb = computeSurfaceEnergyBalance(
+    {
+      lst: activeHotspot.lst,
+      albedo: activeHotspot.albedo,
+      builtFraction: activeHotspot.builtFraction,
+      canopyCover: activeHotspot.canopyCover,
+      windSpeed: activeHotspot.windSpeed,
+      skyView: activeHotspot.skyView,
+    },
+    {
+      airTemperatureC: currentSeasonData.meanLst - 4.5,
+      solarRadiationWm2: season === "Summer" ? 840 : season === "Post_Monsoon" ? 680 : season === "Winter" ? 540 : 720,
+      windSpeedMs: env.windSpeedMs,
+      albedo: env.albedo,
+      treeCoverPct: env.treeCoverPct,
+      imperviousPct: env.imperviousPct,
+    },
+    shownTemperature
+  );
   const parameterRows: Array<[string, string]> = selectedAreaMatchesCity ? [
     ["Canopy Cover Fraction", activeHotspot.canopyCover],
     ["Impervious Built Fraction", activeHotspot.builtFraction],
@@ -224,7 +244,7 @@ export default function DriverAnalysisView({
             </div>
           </div>
 
-          {/* Card 2: Biophysical Surface Energy & Microclimate Dynamics (Expanded to fill bottom) */}
+          {/* Card 2: Biophysical Surface Energy & Microclimate Dynamics (Live PINN + SEB Output) */}
           <div className="border border-[#E2E8E5] bg-white p-4 shadow-xs rounded-xs flex-1 flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between border-b border-[#EDF2EF] pb-2">
@@ -241,34 +261,34 @@ export default function DriverAnalysisView({
                 </span>
               </div>
 
-              {/* 3 Physics Partitioning Metric Blocks */}
+              {/* 3 Physics Partitioning Metric Blocks (Live PINN Energy Breakdown) */}
               <div className="mt-3 grid grid-cols-3 gap-2 text-center font-mono">
                 <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2 rounded-xs">
                   <span className="block text-[7.5px] uppercase font-bold text-[#6B7D79]">Sensible Heat (H)</span>
                   <strong className="text-sm font-bold text-[#C93B2B]">
-                    {parseFloat(activeHotspot.builtFraction) > 60 ? "DOMINANT (68%)" : "ELEVATED (54%)"}
+                    {seb.sensibleClassification} ({seb.sensibleFractionPct}%)
                   </strong>
-                  <span className="block text-[7px] text-[#7A8C88] mt-0.5">~395 W/m² atmospheric heating</span>
+                  <span className="block text-[7px] text-[#7A8C88] mt-0.5">{seb.sensibleHeatWm2} W/m² atmospheric heating</span>
                 </div>
 
                 <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2 rounded-xs">
                   <span className="block text-[7.5px] uppercase font-bold text-[#6B7D79]">Evapotranspiration (λE)</span>
                   <strong className="text-sm font-bold text-[#2878B8]">
-                    {parseFloat(activeHotspot.canopyCover) < 10 ? "DEFICIT (12%)" : "MODERATE (26%)"}
+                    {seb.latentClassification} ({seb.latentFractionPct}%)
                   </strong>
-                  <span className="block text-[7px] text-[#7A8C88] mt-0.5">~70 W/m² moisture cooling</span>
+                  <span className="block text-[7px] text-[#7A8C88] mt-0.5">{seb.latentHeatWm2} W/m² moisture cooling</span>
                 </div>
 
                 <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2 rounded-xs">
                   <span className="block text-[7.5px] uppercase font-bold text-[#6B7D79]">Ground Storage (G)</span>
                   <strong className="text-sm font-bold text-[#D9822B]">
-                    {Number(activeHotspot.albedo) < 0.16 ? "HIGH INERTIA" : "MODERATE"}
+                    {seb.storageClassification} ({seb.storageFractionPct}%)
                   </strong>
-                  <span className="block text-[7px] text-[#7A8C88] mt-0.5">~115 W/m² built mass storage</span>
+                  <span className="block text-[7px] text-[#7A8C88] mt-0.5">{seb.groundStorageWm2} W/m² built mass storage</span>
                 </div>
               </div>
 
-              {/* Microclimate Intervention Levers Table */}
+              {/* Microclimate Intervention Levers Table (Live sensitivity calculations) */}
               <div className="mt-3 border border-[#D7E5DF] bg-[#F7FBF9] p-3 rounded-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-[9px] font-bold uppercase text-[#174D46]">
@@ -284,7 +304,7 @@ export default function DriverAnalysisView({
                       <strong>Canopy Expansion (+15% cover)</strong>
                     </span>
                     <span className="font-mono text-[10px] font-bold text-[#2E684A]">
-                      ↓ 0.8°C to 1.2°C LST
+                      ↓ {seb.canopyCoolingPotentialC}°C LST
                     </span>
                   </div>
 
@@ -294,7 +314,7 @@ export default function DriverAnalysisView({
                       <strong>High-Albedo Cool Roofs (Albedo ≥ 0.65)</strong>
                     </span>
                     <span className="font-mono text-[10px] font-bold text-[#2E684A]">
-                      ↓ 0.6°C to 1.0°C LST
+                      ↓ {seb.albedoCoolingPotentialC}°C LST
                     </span>
                   </div>
 
@@ -304,7 +324,7 @@ export default function DriverAnalysisView({
                       <strong>Permeable Ground & Water Misting</strong>
                     </span>
                     <span className="font-mono text-[10px] font-bold text-[#2E684A]">
-                      ↓ 0.4°C to 0.7°C LST
+                      ↓ {seb.permeableCoolingPotentialC}°C LST
                     </span>
                   </div>
 
@@ -314,7 +334,7 @@ export default function DriverAnalysisView({
                       <strong>Ventilation Corridors & SVF Shading</strong>
                     </span>
                     <span className="font-mono text-[10px] font-bold text-[#2E684A]">
-                      ↓ 0.3°C to 0.5°C LST
+                      ↓ {seb.ventilationCoolingPotentialC}°C LST
                     </span>
                   </div>
                 </div>
@@ -328,15 +348,15 @@ export default function DriverAnalysisView({
                   </div>
                   <div className="font-mono text-[10px] text-[#162220] flex justify-between">
                     <span>Net Radiation (R_n):</span>
-                    <strong className="text-[#174D46]">580 W/m²</strong>
+                    <strong className="text-[#174D46]">{seb.netRadiationWm2} W/m²</strong>
                   </div>
                   <div className="font-mono text-[10px] text-[#162220] flex justify-between">
                     <span>Turbulent Flux (H + λE):</span>
-                    <strong>465 W/m²</strong>
+                    <strong>{seb.sensibleHeatWm2 + seb.latentHeatWm2} W/m²</strong>
                   </div>
                   <div className="font-mono text-[10px] text-[#162220] flex justify-between">
                     <span>PINN Energy Residual:</span>
-                    <strong className="text-[#2E684A]">&lt; 2.5 W/m² (0.4%)</strong>
+                    <strong className="text-[#2E684A]">&lt; {seb.pinnResidualWm2 || 2.5} W/m² ({((seb.pinnResidualWm2 / seb.netRadiationWm2) * 100).toFixed(1)}%)</strong>
                   </div>
                 </div>
 
@@ -354,7 +374,7 @@ export default function DriverAnalysisView({
             </div>
 
             <p className="border-t border-[#EDF2EF] pt-2 font-mono text-[8px] text-[#6B7D79] leading-relaxed">
-              * The biophysical mechanisms above are computed from localized surface parameters (SVF, Albedo, Built Fraction, Canopy Cover) to inform physics-consistent municipal action planning.
+              * The biophysical mechanisms above are computed dynamically from localized surface parameters (SVF {activeHotspot.skyView}, Albedo {activeHotspot.albedo}, Built {activeHotspot.builtFraction}, Canopy {activeHotspot.canopyCover}) using the PINN surface energy solver.
             </p>
           </div>
         </div>
