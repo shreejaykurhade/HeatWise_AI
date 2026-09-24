@@ -21,6 +21,13 @@ same-pixel temporal pairs. XGBoost remains the deployed decision model.
 
 The regressor uses monotonic constraints for physically expected directions. Chennai and Pune are used only for early stopping and threshold selection; Bengaluru, Delhi and Mumbai remain untouched until final testing.
 
+The hotspot decision threshold is calibrated on Chennai and Pune to maximize
+recall while meeting a 90% tuning-precision floor. On the untouched Bengaluru,
+Delhi and Mumbai cohort this produces 79.95% precision, 41.06% recall, 54.25%
+F1 and 93.07% accuracy. This is a high-confidence alert operating point; the
+continuous hotspot probability and risk bands remain available for broader
+screening.
+
 Training uses 12 cities. Bengaluru, Delhi and Mumbai are held out completely for spatial generalization testing. Target-derived and intervention-outcome columns are excluded from inputs.
 
 ## Train locally

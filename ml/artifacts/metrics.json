@@ -1,7 +1,7 @@
 {
-  "version": "2.0.0-xgboost",
+  "version": "2.1.0-xgboost-high-precision",
   "algorithm": "XGBoost",
-  "trained_at": "2026-08-22T12:20:03.636885+00:00",
+  "trained_at": "2026-08-27T07:11:52.744959+00:00",
   "dataset": "synthetic_india_urban_heat_v1",
   "synthetic_data_warning": true,
   "rows": 500000,
@@ -38,49 +38,52 @@
     "r2": 0.97659
   },
   "classification_metrics": {
-    "threshold": 0.2,
-    "threshold_objective": "F2 on tuning cities (recall-weighted)",
-    "accuracy": 0.92475,
-    "precision": 0.60315,
-    "recall": 0.72486,
-    "f1": 0.65843,
+    "threshold": 0.9525,
+    "threshold_objective": "Recall-maximized subject to precision >= 0.90 on tuning cities",
+    "tuning_precision": 0.90063,
+    "tuning_recall": 0.53125,
+    "tuning_f1": 0.6683,
+    "accuracy": 0.93072,
+    "precision": 0.79953,
+    "recall": 0.41056,
+    "f1": 0.54253,
     "roc_auc": 0.95158,
     "pr_auc": 0.73068,
     "brier": 0.05611,
     "confusion_matrix": [
       [
-        85465,
-        4786
+        89218,
+        1033
       ],
       [
-        2761,
-        7274
+        5915,
+        4120
       ]
     ],
     "report": {
       "0": {
-        "precision": 0.9687053702990048,
-        "recall": 0.9469701166746075,
-        "f1-score": 0.9577144393955523,
+        "precision": 0.9378238886611375,
+        "recall": 0.988554143444394,
+        "f1-score": 0.9625210374142321,
         "support": 90251.0
       },
       "1": {
-        "precision": 0.603150912106136,
-        "recall": 0.7248629795714997,
-        "f1-score": 0.6584295089386739,
+        "precision": 0.7995342518921017,
+        "recall": 0.4105630293971101,
+        "f1-score": 0.5425335791414274,
         "support": 10035.0
       },
-      "accuracy": 0.9247452286460722,
+      "accuracy": 0.9307181461021479,
       "macro avg": {
-        "precision": 0.7859281412025705,
-        "recall": 0.8359165481230536,
-        "f1-score": 0.8080719741671132,
+        "precision": 0.8686790702766196,
+        "recall": 0.6995585864207521,
+        "f1-score": 0.7525273082778298,
         "support": 100286.0
       },
       "weighted avg": {
-        "precision": 0.9321265957146616,
-        "recall": 0.9247452286460722,
-        "f1-score": 0.9277668467392017,
+        "precision": 0.9239860996878284,
+        "recall": 0.9307181461021479,
+        "f1-score": 0.9204954890448925,
         "support": 100286.0
       }
     }

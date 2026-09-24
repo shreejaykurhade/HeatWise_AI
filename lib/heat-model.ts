@@ -51,6 +51,7 @@ export type HeatPrediction = {
     hotspotF1: number;
     hotspotBrier: number;
     decisionThreshold: number;
+    confusionMatrix: [[number, number], [number, number]];
     holdoutCities: string[];
   };
   syntheticDataWarning: true;
@@ -147,6 +148,7 @@ export function predictUrbanHeat(rawInput: NumericInput): HeatPrediction {
       hotspotF1: artifact.metadata.classification_metrics.f1 as number,
       hotspotBrier: artifact.metadata.classification_metrics.brier as number,
       decisionThreshold: threshold,
+      confusionMatrix: artifact.metadata.classification_metrics.confusion_matrix as [[number, number], [number, number]],
       holdoutCities: ["Bengaluru", "Delhi", "Mumbai"],
     },
     syntheticDataWarning: true,

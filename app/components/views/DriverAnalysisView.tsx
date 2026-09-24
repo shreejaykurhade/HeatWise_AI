@@ -16,6 +16,8 @@ type ModelPrediction = {
     temperatureMaeC: number; temperatureRmseC: number; temperatureR2: number;
     hotspotAccuracy: number; hotspotPrecision: number; hotspotRecall: number;
     hotspotRocAuc: number; hotspotPrAuc: number; hotspotF1: number; hotspotBrier: number;
+    decisionThreshold: number;
+    confusionMatrix: [[number, number], [number, number]];
   };
 };
 
@@ -70,6 +72,8 @@ export default function DriverAnalysisView({
   const analysisTarget = targetIsWard ? activeHotspot?.name : (selectedArea?.name ?? city);
   const shownTemperature = analysisModel === "pinn" ? pinnPrediction?.predictedLstC : modelPrediction?.predictedLstC;
   const shownModelVersion = analysisModel === "pinn" ? pinnPrediction?.modelVersion : modelPrediction?.modelVersion;
+  const confusionMatrix = modelPrediction?.validation.confusionMatrix ?? [[89218, 1033], [5915, 4120]];
+  const [[trueNegative, falsePositive], [falseNegative, truePositive]] = confusionMatrix;
 
   if (!activeHotspot) return null;
   const physicalDrivers = activeHotspot.driverBreakdown.slice(0, 5);
@@ -264,10 +268,10 @@ export default function DriverAnalysisView({
               <div className="mb-2 font-mono text-[8px] text-[#B6CBC5]">XGBOOST HOTSPOT CLASSIFIER</div>
               <div className="space-y-1.5">
                 {[
-                  ["Accuracy", modelPrediction?.validation.hotspotAccuracy ?? 0.92475],
-                  ["Precision", modelPrediction?.validation.hotspotPrecision ?? 0.60315],
-                  ["Recall", modelPrediction?.validation.hotspotRecall ?? 0.72486],
-                  ["F1", modelPrediction?.validation.hotspotF1 ?? 0.65843],
+                  ["Accuracy", modelPrediction?.validation.hotspotAccuracy ?? 0.93072],
+                  ["Precision", modelPrediction?.validation.hotspotPrecision ?? 0.79953],
+                  ["Recall", modelPrediction?.validation.hotspotRecall ?? 0.41056],
+                  ["F1", modelPrediction?.validation.hotspotF1 ?? 0.54253],
                   ["ROC-AUC", modelPrediction?.validation.hotspotRocAuc ?? 0.95158],
                   ["PR-AUC", modelPrediction?.validation.hotspotPrAuc ?? 0.73068],
                 ].map(([label, rawValue]) => {
@@ -275,7 +279,23 @@ export default function DriverAnalysisView({
                   return <div key={String(label)} className="grid grid-cols-[58px_1fr_36px] items-center gap-2 font-mono text-[8px]"><span>{label}</span><div className="h-2 bg-white/10"><div className="h-full bg-[#55A993]" style={{ width: `${value * 100}%` }} /></div><strong className="text-right">{(value * 100).toFixed(1)}%</strong></div>;
                 })}
               </div>
-              <div className="mt-2 flex justify-between font-mono text-[8px] text-[#A0BCB6]"><span>Brier error: {(modelPrediction?.validation.hotspotBrier ?? 0.05611).toFixed(3)} ↓</span><span>Held-out: 100,286</span></div>
+              <div className="mt-2 flex flex-wrap justify-between gap-1 font-mono text-[8px] text-[#A0BCB6]"><span>High-confidence threshold: {((modelPrediction?.validation.decisionThreshold ?? 0.9525) * 100).toFixed(1)}%</span><span>Brier: {(modelPrediction?.validation.hotspotBrier ?? 0.05611).toFixed(3)} ↓ · Held-out: 100,286</span></div>
+            </div>
+
+            <div className="mt-4 border-t border-white/15 pt-3">
+              <div className="mb-2 flex items-center justify-between font-mono text-[8px] text-[#B6CBC5]"><span>CONFUSION MATRIX · HELD-OUT CITIES</span><span>ACTUAL × PREDICTED</span></div>
+              <div className="grid grid-cols-[72px_1fr_1fr] gap-1 font-mono text-[8px]">
+                <div />
+                <div className="pb-1 text-center text-[#A0BCB6]">PRED. NORMAL</div>
+                <div className="pb-1 text-center text-[#A0BCB6]">PRED. HOTSPOT</div>
+                <div className="flex items-center text-[#A0BCB6]">ACTUAL NORMAL</div>
+                <div className="border border-[#55A993]/50 bg-[#174D46] p-2 text-center"><strong className="block text-sm text-white">{trueNegative.toLocaleString("en-IN")}</strong><span className="text-[#A0BCB6]">TRUE NEGATIVE</span></div>
+                <div className="border border-[#DFA449]/40 bg-[#5B431D] p-2 text-center"><strong className="block text-sm text-[#FFE1A4]">{falsePositive.toLocaleString("en-IN")}</strong><span className="text-[#E8C98B]">FALSE POSITIVE</span></div>
+                <div className="flex items-center text-[#A0BCB6]">ACTUAL HOTSPOT</div>
+                <div className="border border-[#D86A5A]/45 bg-[#5A2823] p-2 text-center"><strong className="block text-sm text-[#FFB5AA]">{falseNegative.toLocaleString("en-IN")}</strong><span className="text-[#E9A097]">FALSE NEGATIVE</span></div>
+                <div className="border border-[#55A993]/50 bg-[#174D46] p-2 text-center"><strong className="block text-sm text-white">{truePositive.toLocaleString("en-IN")}</strong><span className="text-[#A0BCB6]">TRUE POSITIVE</span></div>
+              </div>
+              <p className="mt-2 font-mono text-[8px] leading-relaxed text-[#A0BCB6]">Correct: {(trueNegative + truePositive).toLocaleString("en-IN")} · Incorrect: {(falsePositive + falseNegative).toLocaleString("en-IN")}</p>
             </div>
           </div>
         </div>

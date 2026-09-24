@@ -13,7 +13,7 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.metrics import (
     accuracy_score, average_precision_score, brier_score_loss,
-    classification_report, confusion_matrix, f1_score, fbeta_score,
+    classification_report, confusion_matrix, f1_score,
     mean_absolute_error, mean_squared_error, precision_score, r2_score,
     recall_score, roc_auc_score,
 )
@@ -166,7 +166,15 @@ def importance(model, features: list[str]) -> list[dict]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--max-estimators", type=int, default=500)
+    parser.add_argument(
+        "--target-precision",
+        type=float,
+        default=0.90,
+        help="Minimum hotspot precision required on the tuning-city split.",
+    )
     args = parser.parse_args()
+    if not 0 < args.target_precision < 1:
+        raise ValueError("--target-precision must be between 0 and 1")
     data = load_data()
     train_mask = ~data["city"].isin(HOLDOUT_CITIES)
     test_mask = ~train_mask
@@ -210,8 +218,23 @@ def main() -> None:
     classifier.fit(x_cls.loc[train_mask], final_y, verbose=False)
 
     tune_probabilities = tuner_cls.predict_proba(x_cls.loc[tune_mask])[:, 1]
-    thresholds = np.linspace(0.1, 0.9, 161)
-    threshold = float(max(thresholds, key=lambda t: fbeta_score(y_hot.loc[tune_mask], tune_probabilities >= t, beta=2)))
+    thresholds = np.linspace(0.1, 0.995, 359)
+    tuning_candidates = []
+    for candidate in thresholds:
+        candidate_predictions = tune_probabilities >= candidate
+        tuning_candidates.append({
+            "threshold": float(candidate),
+            "precision": float(precision_score(y_hot.loc[tune_mask], candidate_predictions, zero_division=0)),
+            "recall": float(recall_score(y_hot.loc[tune_mask], candidate_predictions, zero_division=0)),
+            "f1": float(f1_score(y_hot.loc[tune_mask], candidate_predictions, zero_division=0)),
+        })
+    precision_eligible = [item for item in tuning_candidates if item["precision"] >= args.target_precision]
+    if not precision_eligible:
+        raise RuntimeError(f"No threshold achieved target precision {args.target_precision:.2f} on tuning cities")
+    # Among thresholds meeting the precision floor, preserve as much hotspot
+    # sensitivity as possible. Threshold selection never sees held-out cities.
+    selected_threshold = max(precision_eligible, key=lambda item: (item["recall"], item["f1"]))
+    threshold = selected_threshold["threshold"]
     probabilities = classifier.predict_proba(x_cls.loc[test_mask])[:, 1]
     predicted_hotspot = probabilities >= threshold
     regression_metrics = {
@@ -220,7 +243,11 @@ def main() -> None:
         "r2": round(float(r2_score(y_temp.loc[test_mask], test_pred)), 5),
     }
     classification_metrics = {
-        "threshold": round(threshold, 4), "threshold_objective": "F2 on tuning cities (recall-weighted)",
+        "threshold": round(threshold, 4),
+        "threshold_objective": f"Recall-maximized subject to precision >= {args.target_precision:.2f} on tuning cities",
+        "tuning_precision": round(selected_threshold["precision"], 5),
+        "tuning_recall": round(selected_threshold["recall"], 5),
+        "tuning_f1": round(selected_threshold["f1"], 5),
         "accuracy": round(float(accuracy_score(y_hot.loc[test_mask], predicted_hotspot)), 5),
         "precision": round(float(precision_score(y_hot.loc[test_mask], predicted_hotspot, zero_division=0)), 5),
         "recall": round(float(recall_score(y_hot.loc[test_mask], predicted_hotspot, zero_division=0)), 5),
@@ -232,7 +259,7 @@ def main() -> None:
         "report": classification_report(y_hot.loc[test_mask], predicted_hotspot, output_dict=True, zero_division=0),
     }
     metadata = {
-        "version": "2.0.0-xgboost", "algorithm": "XGBoost",
+        "version": "2.1.0-xgboost-high-precision", "algorithm": "XGBoost",
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "dataset": "synthetic_india_urban_heat_v1", "synthetic_data_warning": True,
         "rows": int(len(data)), "training_rows": int(train_mask.sum()), "test_rows": int(test_mask.sum()),

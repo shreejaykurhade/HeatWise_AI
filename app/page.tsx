@@ -38,6 +38,8 @@ type ModelPrediction = {
     temperatureMaeC: number; temperatureRmseC: number; temperatureR2: number;
     hotspotAccuracy: number; hotspotPrecision: number; hotspotRecall: number;
     hotspotRocAuc: number; hotspotPrAuc: number; hotspotF1: number; hotspotBrier: number;
+    decisionThreshold: number;
+    confusionMatrix: [[number, number], [number, number]];
   };
 };
 type PinnPrediction = {
