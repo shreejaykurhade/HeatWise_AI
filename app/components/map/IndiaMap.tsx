@@ -34,6 +34,8 @@ export interface IndiaMapProps {
     timelineStep?: number;
     timelineDay?: number;
   };
+  /** Date-conditioned model temperature adjustment used by comparison views. */
+  thermalOffsetC?: number;
   mapStyle?: MapStyleKey;
   onMapStyleChange?: (style: MapStyleKey) => void;
   showHeatWave?: boolean;
@@ -236,6 +238,7 @@ function IndiaMapComponent({
   onSelectHotspot,
   selectedAreaCoordinates,
   scenarioOverlay,
+  thermalOffsetC = 0,
   mapStyle: controlledMapStyle,
   onMapStyleChange: controlledOnStyleChange,
   showHeatWave: controlledShowHeatWave,
@@ -441,6 +444,7 @@ function IndiaMapComponent({
       const c = CITIES_DATA[cName];
       const s = c.seasons[season];
       let peakTemp = s?.peakLst ?? 40.0;
+      peakTemp += thermalOffsetC;
 
       if (scenarioOverlay && scenarioOverlay.coolingDelta) {
         const progress = scenarioOverlay.timelineStep ?? 1.0;
@@ -490,6 +494,7 @@ function IndiaMapComponent({
           : season === "Monsoon"
           ? sc.peakLst - 6.0
           : sc.peakLst;
+      seasonalTemp += thermalOffsetC;
 
       if (scenarioOverlay && scenarioOverlay.coolingDelta && (scenarioOverlay.mode === "simulated" || scenarioOverlay.mode === "change")) {
         const progress = scenarioOverlay.timelineStep ?? 1.0;
@@ -772,6 +777,7 @@ function IndiaMapComponent({
     cityList,
     handleStateSelect,
     scenarioOverlay,
+    thermalOffsetC,
     mode,
   ]);
 
@@ -818,7 +824,7 @@ function IndiaMapComponent({
         const c = CITIES_DATA[cName];
         const s = c.seasons[season];
         const isSelected = cName === city;
-        const peakTemp = s?.peakLst ?? 40.0;
+        const peakTemp = Number(((s?.peakLst ?? 40.0) + (isSelected ? thermalOffsetC : 0)).toFixed(1));
         const dotColor =
           peakTemp >= 52
             ? "#FF5252"
@@ -880,13 +886,14 @@ function IndiaMapComponent({
     if (showHotspots && currentCityData && isZoomedIn) {
       currentHotspots.forEach((h: Hotspot) => {
         const isHotspotActive = h.name === selectedHotspot;
+        const adjustedHotspotTemp = Number((Number.parseFloat(h.temp) + thermalOffsetC).toFixed(1));
         let riskColor =
-          h.risk === "Very high"
+          adjustedHotspotTemp >= 50
             ? "#FF5252"
-            : h.risk === "High"
+            : adjustedHotspotTemp >= 42
             ? "#FF9800"
             : "#FFC107";
-        let displayedTemp = h.temp;
+        let displayedTemp = `${adjustedHotspotTemp.toFixed(1)}°C`;
         let pinIcon = "🔥";
 
         if (isHotspotActive && scenarioOverlay) {
@@ -951,6 +958,7 @@ function IndiaMapComponent({
     currentCityData,
     currentHotspots,
     scenarioOverlay,
+    thermalOffsetC,
     onSelectCity,
     onSelectHotspot,
     mode,

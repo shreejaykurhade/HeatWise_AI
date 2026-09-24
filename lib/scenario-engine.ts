@@ -10,6 +10,7 @@ import { predictUrbanHeat, getHeatModelMetadata } from "./heat-model";
 import { Hotspot, CityData, CitySeasonData, SeasonName } from "../app/data/heatData";
 
 export type InterventionType = "trees" | "roofs" | "shade" | "pavement";
+export type InterventionMix = Partial<Record<InterventionType, number>>;
 
 export interface InterventionConfig {
   type: InterventionType;
@@ -73,8 +74,12 @@ export interface AnomalyReport {
 }
 
 export interface SimpleSimulationResult {
+  baselineDate: string;
+  comparisonDate: string;
   baselineLst: number;
+  comparisonNoInterventionLst: number;
   scenarioLst: number;
+  temporalChangeNoIntervention: number;
   coolingDelta: number; // positive number: baseline - scenario
   deltaLst: number;     // scenario - baseline (negative when cooler)
   baselineRisk: string;
@@ -85,6 +90,7 @@ export interface SimpleSimulationResult {
   scenarioUhi: number;
   intervention: InterventionType;
   intensityPct: number;
+  interventionMix?: InterventionMix;
   observations: ObservationPoint[];
   anomalyReport: AnomalyReport;
 }
@@ -96,13 +102,36 @@ const timingBySeason: Record<SeasonName, { month: number; day: number }> = {
   Winter: { month: 1, day: 20 },
 };
 
+export interface SimulationDates {
+  baselineDate?: string;
+  comparisonDate?: string;
+}
+
+function seasonForDate(date: Date): SeasonName {
+  const month = date.getUTCMonth() + 1;
+  if (month >= 3 && month <= 6) return "Summer";
+  if (month >= 7 && month <= 9) return "Monsoon";
+  if (month >= 10 && month <= 11) return "Post_Monsoon";
+  return "Winter";
+}
+
+function safeDate(value: string | undefined, fallbackSeason: SeasonName): Date {
+  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const parsed = new Date(`${value}T12:00:00Z`);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  const fallback = timingBySeason[fallbackSeason];
+  return new Date(Date.UTC(2026, fallback.month - 1, Math.min(28, fallback.day)));
+}
+
 function buildBaselineVector(
   hotspot: Hotspot,
   cityData: CityData,
   seasonData: CitySeasonData,
-  season: SeasonName
+  season: SeasonName,
+  date: Date
 ): Record<string, number | undefined> {
-  const context = timingBySeason[season];
+  const context = { month: date.getUTCMonth() + 1, day: Math.floor((date.getTime() - Date.UTC(date.getUTCFullYear(), 0, 0)) / 86_400_000) };
   const env = seasonData.env;
   const numPct = (v: string | undefined) => (v ? Number.parseFloat(v) / 100 : undefined);
 
@@ -148,16 +177,26 @@ export function simulateIntervention(
   cityData: CityData,
   seasonData: CitySeasonData,
   season: SeasonName,
-  intervention: InterventionType,
-  intensityPct: number
+  intervention: InterventionType | InterventionMix,
+  intensityPct = 0,
+  dates: SimulationDates = {}
 ): SimpleSimulationResult {
   const meta = getHeatModelMetadata();
-  const baseVector = buildBaselineVector(hotspot, cityData, seasonData, season);
-  const scenarioVector = { ...baseVector };
+  const baselineDate = safeDate(dates.baselineDate, season);
+  const comparisonDate = safeDate(dates.comparisonDate, season);
+  const baselineSeason = seasonForDate(baselineDate);
+  const comparisonSeason = seasonForDate(comparisonDate);
+  const baseVector = buildBaselineVector(hotspot, cityData, cityData.seasons[baselineSeason], baselineSeason, baselineDate);
+  const comparisonVector = buildBaselineVector(hotspot, cityData, cityData.seasons[comparisonSeason], comparisonSeason, comparisonDate);
+  const scenarioVector = { ...comparisonVector };
 
-  const fraction = Math.max(0, Math.min(100, intensityPct)) / 100;
+  const mix: InterventionMix = typeof intervention === "string" ? { [intervention]: intensityPct } : intervention;
+  const fractionFor = (type: InterventionType) => Math.max(0, Math.min(100, mix[type] ?? 0)) / 100;
+  const primaryIntervention = (Object.keys(mix) as InterventionType[]).find((type) => (mix[type] ?? 0) > 0) ?? "trees";
+  const totalIntensity = Object.values(mix).reduce((sum, value) => sum + (value ?? 0), 0);
 
-  if (intervention === "trees") {
+  if (fractionFor("trees") > 0) {
+    const fraction = fractionFor("trees");
     // Tree Cover: increases canopy cover, ndvi, green space; replaces impervious
     const baseTree = baseVector.tree_cover_fraction ?? meta.feature_profile["tree_cover_fraction"]?.median ?? 0.25;
     scenarioVector.tree_cover_fraction = clamp("tree_cover_fraction", baseTree + fraction * 0.40);
@@ -167,7 +206,9 @@ export function simulateIntervention(
 
     const baseImp = baseVector.impervious_surface_fraction ?? meta.feature_profile["impervious_surface_fraction"]?.median ?? 0.62;
     scenarioVector.impervious_surface_fraction = clamp("impervious_surface_fraction", baseImp - fraction * 0.25);
-  } else if (intervention === "roofs") {
+  }
+  if (fractionFor("roofs") > 0) {
+    const fraction = fractionFor("roofs");
     // Cool Roofs: increases albedo, decreases roof_material_index & surface_material_index
     const baseAlbedo = baseVector.albedo ?? meta.feature_profile["albedo"]?.median ?? 0.19;
     scenarioVector.albedo = clamp("albedo", baseAlbedo + fraction * 0.12);
@@ -180,14 +221,18 @@ export function simulateIntervention(
 
     const baseSurf = baseVector.surface_material_index ?? meta.feature_profile["surface_material_index"]?.median ?? 6.14;
     scenarioVector.surface_material_index = clamp("surface_material_index", baseSurf - fraction * 1.5);
-  } else if (intervention === "shade") {
+  }
+  if (fractionFor("shade") > 0) {
+    const fraction = fractionFor("shade");
     // Shade / Green Infra: canopy proxy (bounded SVF adjustment & vegetative cover)
     const baseTree = baseVector.tree_cover_fraction ?? meta.feature_profile["tree_cover_fraction"]?.median ?? 0.25;
     scenarioVector.tree_cover_fraction = clamp("tree_cover_fraction", baseTree + fraction * 0.15);
 
     const baseSvf = baseVector.sky_view_factor ?? meta.feature_profile["sky_view_factor"]?.median ?? 0.53;
     scenarioVector.sky_view_factor = clamp("sky_view_factor", baseSvf - fraction * 0.08);
-  } else if (intervention === "pavement") {
+  }
+  if (fractionFor("pavement") > 0) {
+    const fraction = fractionFor("pavement");
     // Permeable / Reflective Pavement: decreases impervious & pavement_type_index, increases albedo
     const baseImp = baseVector.impervious_surface_fraction ?? meta.feature_profile["impervious_surface_fraction"]?.median ?? 0.62;
     scenarioVector.impervious_surface_fraction = clamp("impervious_surface_fraction", baseImp - fraction * 0.25);
@@ -201,14 +246,17 @@ export function simulateIntervention(
 
   // Run existing XGBoost model
   const basePred = predictUrbanHeat(baseVector);
+  const comparisonPred = predictUrbanHeat(comparisonVector);
   const scenarioPred = predictUrbanHeat(scenarioVector);
 
   const baselineLst = basePred.predictedLstC;
+  const comparisonNoInterventionLst = comparisonPred.predictedLstC;
   const scenarioLst = scenarioPred.predictedLstC;
-  const coolingDelta = Number(Math.max(0, baselineLst - scenarioLst).toFixed(1));
-  const deltaLst = Number((scenarioLst - baselineLst).toFixed(1));
+  const coolingDelta = Number(Math.max(0, comparisonNoInterventionLst - scenarioLst).toFixed(1));
+  const deltaLst = Number((scenarioLst - comparisonNoInterventionLst).toFixed(1));
+  const temporalChangeNoIntervention = Number((comparisonNoInterventionLst - baselineLst).toFixed(1));
 
-  const cityMean = seasonData.meanLst;
+  const cityMean = cityData.seasons[comparisonSeason].meanLst;
   const baselineUhi = Number((baselineLst - cityMean).toFixed(1));
   const scenarioUhi = Number((scenarioLst - cityMean).toFixed(1));
 
@@ -256,8 +304,8 @@ export function simulateIntervention(
   const anomalyReport: AnomalyReport = {
     location: hotspot.name,
     city: cityData.name,
-    intervention: INTERVENTION_OPTIONS[intervention].name,
-    intensityPct,
+    intervention: INTERVENTION_OPTIONS[primaryIntervention].name,
+    intensityPct: totalIntensity,
     modeledChangeC: -coolingDelta,
     observedChangeC: obs15,
     observationPeriodDays: 15,
@@ -270,8 +318,12 @@ export function simulateIntervention(
   };
 
   return {
+    baselineDate: baselineDate.toISOString().slice(0, 10),
+    comparisonDate: comparisonDate.toISOString().slice(0, 10),
     baselineLst,
+    comparisonNoInterventionLst,
     scenarioLst,
+    temporalChangeNoIntervention,
     coolingDelta,
     deltaLst,
     baselineRisk: basePred.riskBand,
@@ -280,8 +332,9 @@ export function simulateIntervention(
     scenarioProb: scenarioPred.hotspotProbability,
     baselineUhi,
     scenarioUhi,
-    intervention,
-    intensityPct,
+    intervention: primaryIntervention,
+    intensityPct: totalIntensity,
+    interventionMix: mix,
     observations,
     anomalyReport,
   };

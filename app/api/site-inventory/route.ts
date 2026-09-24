@@ -16,11 +16,19 @@ export type Inventory = {
   roadSegments: number;
   parkOrOpenSpaceCount: number;
   waterFeatureCount: number;
+  assets: {
+    buildings: SpatialAsset[];
+    corridors: SpatialAsset[];
+    parks: SpatialAsset[];
+    waterBodies: SpatialAsset[];
+  };
   protectedOrEcoCount: number;
   geospatialContext: GeospatialContext;
   retrievedAt: string;
   cached?: boolean;
 };
+
+export type SpatialAsset = { name: string; type: string; osmId: string };
 
 const cache = new Map<string, { expires: number; data: Inventory }>();
 
@@ -59,6 +67,15 @@ export async function GET(request: Request) {
         : new RegExp(`<tag\\s+k="${key}"\\s+v="[^"]*"\\s*\\/>`);
       return expression.test(way);
     };
+    const tagValue = (way: string, key: string) => way.match(new RegExp(`<tag\\s+k="${key}"\\s+v="([^"]*)"\\s*\\/>`))?.[1];
+    const wayId = (way: string) => way.match(/<way\s+id="([^"]+)"/)?.[1] ?? "unknown";
+    const listedAssets = (predicate: (way: string) => boolean, fallback: string, type: (way: string) => string): SpatialAsset[] => ways
+      .filter(predicate)
+      .map((way) => ({
+        name: tagValue(way, "name") || tagValue(way, "ref") || `${fallback} #${wayId(way)}`,
+        type: type(way),
+        osmId: wayId(way),
+      }));
 
     const buildingCount = ways.filter((way) => hasTag(way, "building")).length;
     const roadSegments = ways.filter((way) => hasTag(way, "highway")).length;
@@ -120,6 +137,12 @@ export async function GET(request: Request) {
       roadSegments,
       parkOrOpenSpaceCount,
       waterFeatureCount,
+      assets: {
+        buildings: listedAssets((way) => hasTag(way, "building"), "Building footprint", (way) => tagValue(way, "building") || "building"),
+        corridors: listedAssets((way) => hasTag(way, "highway"), "Unnamed corridor", (way) => tagValue(way, "highway") || "road"),
+        parks: listedAssets((way) => hasTag(way, "leisure", "park") || hasTag(way, "leisure", "garden") || hasTag(way, "landuse", "grass") || hasTag(way, "landuse", "forest") || hasTag(way, "natural", "wood"), "Unnamed open space", (way) => tagValue(way, "leisure") || tagValue(way, "landuse") || tagValue(way, "natural") || "open space"),
+        waterBodies: listedAssets((way) => hasTag(way, "natural", "water") || hasTag(way, "waterway") || hasTag(way, "natural", "wetland"), "Unnamed water feature", (way) => tagValue(way, "waterway") || tagValue(way, "natural") || "water"),
+      },
       protectedOrEcoCount,
       geospatialContext,
       retrievedAt: new Date().toISOString(),

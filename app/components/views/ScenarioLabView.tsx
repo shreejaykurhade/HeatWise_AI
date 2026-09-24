@@ -21,6 +21,14 @@ interface Props {
 const TIMELINE_DAYS = [0, 5, 10, 15] as const;
 type TimelineDay = (typeof TIMELINE_DAYS)[number];
 
+function seasonForIsoDate(value: string): SeasonName {
+  const month = Number(value.slice(5, 7));
+  if (month >= 3 && month <= 6) return "Summer";
+  if (month >= 7 && month <= 9) return "Monsoon";
+  if (month >= 10 && month <= 11) return "Post_Monsoon";
+  return "Winter";
+}
+
 const MUNICIPAL_PLAN_STAGES: Record<
   TimelineDay,
   { label: string; action: string; desc: string }
@@ -63,10 +71,11 @@ export default function ScenarioLabView({
 
   // 1. Core Simulation State
   const [selectedIntervention, setSelectedIntervention] = useState<InterventionType>("trees");
-  const [intensityPct, setIntensityPct] = useState<number>(25);
+  const [interventionMix, setInterventionMix] = useState<Partial<Record<InterventionType, number>>>({ trees: 25 });
   const [hasSimulated, setHasSimulated] = useState<boolean>(true);
-  const [mapMode, setMapMode] = useState<"baseline" | "simulated" | "change">("simulated");
   const [showAnomalyModal, setShowAnomalyModal] = useState<boolean>(false);
+  const [baselineDate, setBaselineDate] = useState("2026-05-15");
+  const [comparisonDate, setComparisonDate] = useState("2026-06-15");
 
   // 2. Timeline Simulation Over Time
   const [timelineDay, setTimelineDay] = useState<TimelineDay>(15);
@@ -79,12 +88,21 @@ export default function ScenarioLabView({
       currentCityData,
       currentSeasonData,
       season,
-      selectedIntervention,
-      intensityPct
+      interventionMix,
+      0,
+      { baselineDate, comparisonDate }
     );
-  }, [ward, currentCityData, currentSeasonData, season, selectedIntervention, intensityPct]);
+  }, [ward, currentCityData, currentSeasonData, season, interventionMix, baselineDate, comparisonDate]);
 
   const activeInterventionConfig = INTERVENTION_OPTIONS[selectedIntervention];
+  const activeIntensity = interventionMix[selectedIntervention] ?? 0;
+  const activePortfolio = (Object.keys(interventionMix) as InterventionType[]).filter((type) => (interventionMix[type] ?? 0) > 0);
+  const featureChangeLabel: Record<InterventionType, string> = {
+    trees: "Tree cover ↑ · NDVI ↑ · impervious fraction ↓",
+    roofs: "Roof/surface albedo ↑ · roof thermal-storage index ↓",
+    shade: "Tree-cover proxy ↑ · sky-view factor ↓",
+    pavement: "Impervious fraction ↓ · pavement index ↓ · albedo ↑",
+  };
 
   // Timeline progression factor (0.0 at Day 0, 0.33 at Day 5, 0.67 at Day 10, 1.0 at Day 15)
   const timelineProgress = timelineDay / 15;
@@ -104,24 +122,17 @@ export default function ScenarioLabView({
     return () => clearInterval(interval);
   }, [isPlaying]);
 
+  const datesValid = comparisonDate >= baselineDate;
+  const baselineMapSeason = seasonForIsoDate(baselineDate);
+  const comparisonMapSeason = seasonForIsoDate(comparisonDate);
+  const baselineThermalOffset = simulation.baselineLst - currentCityData.seasons[baselineMapSeason].peakLst;
+  const comparisonThermalOffset = simulation.comparisonNoInterventionLst - currentCityData.seasons[comparisonMapSeason].peakLst;
   const handleSimulate = () => {
+    if (!datesValid) return;
     setHasSimulated(true);
-    setMapMode("simulated");
     setTimelineDay(15);
     setIsPlaying(false);
   };
-
-  const scenarioOverlay = useMemo(() => {
-    if (!hasSimulated) return undefined;
-    return {
-      mode: mapMode,
-      simulatedLst: currentTimelineTemp,
-      coolingDelta: simulation.coolingDelta,
-      scenarioRisk: timelineDay >= 10 ? simulation.scenarioRisk : simulation.baselineRisk,
-      timelineStep: timelineProgress,
-      timelineDay: timelineDay,
-    };
-  }, [hasSimulated, mapMode, currentTimelineTemp, simulation, timelineProgress, timelineDay]);
 
   return (
     <div className="view-container space-y-3">
@@ -137,7 +148,7 @@ export default function ScenarioLabView({
             </span>
           </div>
           <h2 className="mt-0.5 font-sans text-lg font-bold text-[#162220]">
-            {ward.name} · Municipal Cooling Action Simulation
+            {ward.name} · Dated Cooling Counterfactual
           </h2>
         </div>
 
@@ -162,158 +173,39 @@ export default function ScenarioLabView({
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
         {/* Left / Main Area: Large Thermal Map + Timeline Player */}
         <section className="border border-[#E2E8E5] bg-white shadow-xs rounded-xs xl:col-span-8 flex flex-col overflow-hidden">
-          {/* Map Layer Mode Switcher */}
+          {/* Date comparison heading */}
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EDF2EF] px-3.5 py-2 bg-[#FAFBFA]">
             <div className="flex items-center gap-2">
               <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#174D46]">
-                THERMAL MAP VIEW
+                SIDE-BY-SIDE DATE COMPARISON
               </span>
               <span className="text-[10px] text-[#5C6E6A]">
-                {mapMode === "baseline" && "Current in-situ heat profile"}
-                {mapMode === "simulated" &&
-                  `Day ${timelineDay} in-situ heat: ${currentTimelineTemp.toFixed(1)}°C (↓ ${currentTimelineCooling.toFixed(1)}°C)`}
-                {mapMode === "change" &&
-                  `Predicted cooling benefit: ↓ ${currentTimelineCooling.toFixed(1)}°C`}
+                Baseline {simulation.baselineDate} → target {simulation.comparisonDate}
               </span>
             </div>
+            <span className="font-mono text-[8px] text-[#174D46]">DATE-CONDITIONED MODEL OUTPUT</span>
+          </div>
 
-            {/* Before / After / Change Toggle */}
-            <div className="flex items-center gap-1 bg-white border border-[#D2DDD8] p-0.5 rounded-xs">
-              <button
-                onClick={() => {
-                  setMapMode("baseline");
-                  setTimelineDay(0);
-                  setIsPlaying(false);
-                }}
-                className={`px-3 py-1 font-mono text-[9.5px] font-bold rounded-2xs transition-colors cursor-pointer ${
-                  mapMode === "baseline"
-                    ? "bg-[#0B1C1A] text-white"
-                    : "text-[#5C6E6A] hover:bg-[#F2F8F5]"
-                }`}
-              >
-                BASELINE
-              </button>
-              <button
-                onClick={() => {
-                  setMapMode("simulated");
-                  setTimelineDay(15);
-                }}
-                className={`px-3 py-1 font-mono text-[9.5px] font-bold rounded-2xs transition-colors cursor-pointer ${
-                  mapMode === "simulated"
-                    ? "bg-[#174D46] text-white"
-                    : "text-[#5C6E6A] hover:bg-[#F2F8F5]"
-                }`}
-              >
-                SIMULATED
-              </button>
-              <button
-                onClick={() => {
-                  setMapMode("change");
-                  setTimelineDay(15);
-                }}
-                className={`px-3 py-1 font-mono text-[9.5px] font-bold rounded-2xs transition-colors cursor-pointer ${
-                  mapMode === "change"
-                    ? "bg-[#2E684A] text-white"
-                    : "text-[#5C6E6A] hover:bg-[#F2F8F5]"
-                }`}
-              >
-                CHANGE (Δ°C)
-              </button>
+          {/* Date Comparison Map Canvas */}
+          <div className="grid min-h-[460px] grid-cols-1 gap-px bg-[#E2E8E5] lg:grid-cols-2">
+            <div className="relative min-h-[380px] bg-white">
+              <IndiaMap city={city} season={baselineMapSeason} mode="Heat stress" selectedHotspot={selectedHotspotName} onSelectCity={onSelectCity} onSelectHotspot={onSelectHotspot} thermalOffsetC={baselineThermalOffset} />
+              <div className="absolute left-3 top-3 z-10 border border-white/15 bg-[#0B1C1A]/90 px-3 py-2 font-mono text-[10px] text-white backdrop-blur-xs"><span className="block text-[8px] text-[#A0BCB6]">BASELINE MODEL MAP</span><strong>{simulation.baselineDate}</strong><span className="ml-2 text-[#FFB35C]">{simulation.baselineLst.toFixed(1)}°C</span></div>
+            </div>
+            <div className="relative min-h-[380px] bg-white">
+              <IndiaMap city={city} season={comparisonMapSeason} mode="Heat stress" selectedHotspot={selectedHotspotName} onSelectCity={onSelectCity} onSelectHotspot={onSelectHotspot} thermalOffsetC={comparisonThermalOffset} />
+              <div className="absolute left-3 top-3 z-10 border border-white/15 bg-[#174D46]/95 px-3 py-2 font-mono text-[10px] text-white backdrop-blur-xs"><span className="block text-[8px] text-[#CDE7DD]">TARGET-DATE / NO INTERVENTION</span><strong>{simulation.comparisonDate}</strong><span className="ml-2 text-[#FFDEA5]">{simulation.comparisonNoInterventionLst.toFixed(1)}°C</span></div>
             </div>
           </div>
 
-          {/* Map Canvas */}
-          <div className="h-[460px] relative">
-            <IndiaMap
-              city={city}
-              season={season}
-              mode={mapMode === "change" ? "Cooling opportunity" : "Heat stress"}
-              selectedHotspot={selectedHotspotName}
-              onSelectCity={onSelectCity}
-              onSelectHotspot={onSelectHotspot}
-              scenarioOverlay={scenarioOverlay}
-            />
-
-            {/* Map Status Pill */}
-            <div className="absolute top-3 left-3 bg-[#0B1C1A]/90 text-white px-3 py-1.5 rounded-xs border border-white/15 backdrop-blur-xs text-[10px] font-mono z-10 flex items-center gap-2">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  timelineDay === 0 ? "bg-[#FF5252]" : "bg-[#10B981]"
-                } animate-pulse`}
-              />
-              <span>
-                DAY {timelineDay} · {ward.name} · {currentTimelineTemp.toFixed(1)}°C (
-                {timelineDay === 0 ? "Baseline" : `↓ ${currentTimelineCooling.toFixed(1)}°C`})
-              </span>
-            </div>
+          <div className="grid grid-cols-1 gap-2 border-t border-[#E2E8E5] bg-[#F7FBF9] p-3 sm:grid-cols-3">
+            <div className="border border-[#D7E5DF] bg-white p-2"><span className="font-mono text-[8px] text-[#5C6E6A]">DATE-TO-DATE ΔLST</span><strong className={`mt-1 block font-mono text-lg ${simulation.temporalChangeNoIntervention <= 0 ? "text-[#2E684A]" : "text-[#C93B2B]"}`}>{simulation.temporalChangeNoIntervention >= 0 ? "+" : ""}{simulation.temporalChangeNoIntervention.toFixed(1)}°C</strong></div>
+            <div className="border border-[#D7E5DF] bg-white p-2"><span className="font-mono text-[8px] text-[#5C6E6A]">TARGET LST · WITH INTERVENTION</span><strong className="mt-1 block font-mono text-lg text-[#174D46]">{simulation.scenarioLst.toFixed(1)}°C</strong></div>
+            <div className="border border-[#D7E5DF] bg-white p-2"><span className="font-mono text-[8px] text-[#5C6E6A]">ISOLATED COOLING EFFECT</span><strong className="mt-1 block font-mono text-lg text-[#2E684A]">↓ {simulation.coolingDelta.toFixed(1)}°C</strong></div>
           </div>
 
-          {/* 3. SIMULATION OVER TIME: Interactive Timeline Player Bar */}
-          <div className="border-t border-[#E2E8E5] bg-[#F7FBF9] p-3 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className={`flex items-center gap-1.5 px-3 py-1 font-mono text-[10px] font-bold rounded-xs transition-colors cursor-pointer shadow-2xs ${
-                    isPlaying
-                      ? "bg-[#C93B2B] text-white hover:bg-[#B33123]"
-                      : "bg-[#174D46] text-white hover:bg-[#113B35]"
-                  }`}
-                >
-                  <span>{isPlaying ? "⏸ PAUSE" : "▶ PLAY TIMELINE"}</span>
-                </button>
-                <span className="font-mono text-[9px] font-bold text-[#174D46]">
-                  MUNICIPAL INTERVENTION TIMELINE
-                </span>
-              </div>
-
-              <div className="font-mono text-[10px] text-[#162220] font-bold bg-white border border-[#D2DDD8] px-2.5 py-0.5 rounded-xs">
-                <span>Current State: </span>
-                <span className="text-[#174D46]">{MUNICIPAL_PLAN_STAGES[timelineDay].label}</span>
-              </div>
-            </div>
-
-            {/* Timeline Stepper */}
-            <div className="grid grid-cols-4 gap-1.5 pt-1">
-              {TIMELINE_DAYS.map((d) => {
-                const isActive = timelineDay === d;
-                const isPast = timelineDay >= d;
-                const stage = MUNICIPAL_PLAN_STAGES[d];
-                const stageTemp = simulation.baselineLst - simulation.coolingDelta * (d / 15);
-
-                return (
-                  <button
-                    key={d}
-                    onClick={() => {
-                      setTimelineDay(d);
-                      setIsPlaying(false);
-                      if (mapMode === "baseline" && d > 0) setMapMode("simulated");
-                    }}
-                    className={`p-2 rounded-xs border text-left transition-all cursor-pointer ${
-                      isActive
-                        ? "border-[#174D46] bg-white shadow-xs ring-1 ring-[#174D46]"
-                        : isPast
-                        ? "border-[#D7E5DF] bg-[#E8F3EE]/60 hover:bg-white"
-                        : "border-[#E2E8E5] bg-[#FAFBFA] opacity-75 hover:opacity-100"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between font-mono text-[9px]">
-                      <strong className={isActive ? "text-[#174D46]" : "text-[#44534F]"}>
-                        Day {d}
-                      </strong>
-                      <span className="font-bold text-[#162220]">{stageTemp.toFixed(1)}°C</span>
-                    </div>
-                    <div className="mt-1 text-[9.5px] font-semibold text-[#162220] truncate">
-                      {stage.action}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <p className="text-[8.5px] text-[#5C6E6A] font-sans">
-              <strong>Municipal Plan Phase:</strong> {MUNICIPAL_PLAN_STAGES[timelineDay].desc}
-            </p>
+          <div className="border-t border-[#E2E8E5] bg-[#F7FBF9] p-3 text-[10px] text-[#5C6E6A]">
+            <strong className="font-mono text-[#174D46]">MODEL SCOPE:</strong> This map shows the XGBoost counterfactual after the selected physical feature inputs are changed. Implementation progress and satellite verification appear only after real dated observations are supplied.
           </div>
         </section>
 
@@ -328,6 +220,19 @@ export default function ScenarioLabView({
                 <span className="text-[10px] text-[#5C6E6A] block uppercase font-mono">Selected Area</span>
                 <strong className="text-sm font-bold text-[#162220]">{ward.name}</strong>
               </div>
+            </div>
+
+            <div className="border border-[#D7E5DF] bg-[#F7FBF9] p-3 rounded-xs">
+              <div className="flex items-center justify-between"><span className="font-mono text-[9px] font-bold uppercase text-[#174D46]">Heatmap comparison period</span><span className="font-mono text-[8px] text-[#5C6E6A]">DATE-CONDITIONED XGBOOST</span></div>
+              <div className="mt-2 grid grid-cols-2 gap-2"><label className="font-mono text-[8px] text-[#5C6E6A]">BASELINE<input value={baselineDate} onChange={(e) => setBaselineDate(e.target.value)} type="date" className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220]" /></label><label className="font-mono text-[8px] text-[#5C6E6A]">COMPARE TO<input value={comparisonDate} onChange={(e) => setComparisonDate(e.target.value)} type="date" className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220]" /></label></div>
+              {!datesValid && <p className="mt-2 text-[9px] text-[#C93B2B]">Comparison date must be on or after the baseline date.</p>}
+              <p className="mt-2 text-[8.5px] leading-3 text-[#5C6E6A]">These controls drive the two date-conditioned model heatmaps. They are not labelled as retrieved satellite scenes.</p>
+            </div>
+
+            <div className="border border-[#D7E5DF] bg-[#F7FBF9] p-3 rounded-xs">
+              <div className="flex items-center justify-between"><span className="font-mono text-[9px] font-bold uppercase text-[#174D46]">Model inputs changed</span><span className="font-mono text-[8px] text-[#5C6E6A]">XGBOOST COUNTERFACTUAL</span></div>
+              <p className="mt-2 text-[11px] font-semibold text-[#162220]">{featureChangeLabel[selectedIntervention]}</p>
+              <p className="mt-2 border-t border-[#D7E5DF] pt-2 text-[8.5px] leading-3 text-[#5C6E6A]">The result is useful because it reruns the trained regressor and hotspot classifier after only these bounded physical inputs are changed. It is not presented as an observed historical heat result.</p>
             </div>
 
             {/* Intervention Selection */}
@@ -354,10 +259,9 @@ export default function ScenarioLabView({
                         <span className="text-xs">{opt.name}</span>
                       </div>
                       <input
-                        type="radio"
-                        name="intervention"
-                        checked={isSelected}
-                        onChange={() => setSelectedIntervention(key)}
+                        type="checkbox"
+                        checked={(interventionMix[key] ?? 0) > 0}
+                        onChange={() => setInterventionMix((current) => ({ ...current, [key]: (current[key] ?? 0) > 0 ? 0 : Math.min(15, opt.maxIntensityPct) }))}
                         className="accent-[#174D46] cursor-pointer"
                       />
                     </label>
@@ -373,7 +277,7 @@ export default function ScenarioLabView({
                   {activeInterventionConfig.name} Intensity
                 </span>
                 <span className="font-mono text-xs font-bold text-[#174D46] bg-[#E8F3EE] px-2 py-0.5 rounded-2xs">
-                  +{intensityPct}%
+                  +{activeIntensity}%
                 </span>
               </div>
               <input
@@ -381,8 +285,8 @@ export default function ScenarioLabView({
                 min="5"
                 max={activeInterventionConfig.maxIntensityPct}
                 step="5"
-                value={Math.min(intensityPct, activeInterventionConfig.maxIntensityPct)}
-                onChange={(e) => setIntensityPct(Number(e.target.value))}
+                value={Math.min(activeIntensity, activeInterventionConfig.maxIntensityPct)}
+                onChange={(e) => setInterventionMix((current) => ({ ...current, [selectedIntervention]: Number(e.target.value) }))}
                 className="mt-2.5 w-full accent-[#174D46] cursor-pointer"
                 aria-label="Intervention Intensity Slider"
               />
@@ -393,9 +297,12 @@ export default function ScenarioLabView({
               </div>
             </div>
 
+            <div className="border border-[#D7E5DF] bg-[#F7FBF9] p-2.5 text-[10px] text-[#44534F]"><span className="font-mono text-[8px] font-bold text-[#174D46]">ACTIVE PORTFOLIO</span><p className="mt-1">{activePortfolio.length ? activePortfolio.map((type) => `${INTERVENTION_OPTIONS[type].name} +${interventionMix[type]}%`).join(" · ") : "Select one or more interventions to run a combined model scenario."}</p></div>
+
             {/* Simulate Button */}
             <button
               onClick={handleSimulate}
+              disabled={!datesValid}
               className="w-full bg-[#174D46] hover:bg-[#113B35] text-white font-mono text-xs font-bold py-2.5 rounded-xs transition-colors shadow-xs cursor-pointer tracking-wider"
             >
               SIMULATE IMPACT ➔
@@ -406,14 +313,14 @@ export default function ScenarioLabView({
               <div className="border border-[#174D46]/25 bg-[#F7FBF9] p-3 rounded-xs space-y-2.5">
                 <div className="flex items-center justify-between border-b border-[#D7E5DF] pb-1.5">
                   <span className="font-mono text-[8.5px] font-bold uppercase text-[#174D46]">
-                    SIMULATED IMPACT (DAY {timelineDay})
+                    SIMULATED IMPACT
                   </span>
                   <span className="font-mono text-[8px] text-[#5C6E6A]">MODELLED COUNTERFACTUAL</span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="border border-[#E2E8E5] bg-white p-2 rounded-xs">
-                    <span className="block font-mono text-[7.5px] text-[#6B7E7A] uppercase">BASELINE LST</span>
+                    <span className="block font-mono text-[7.5px] text-[#6B7E7A] uppercase">BASELINE MODEL LST</span>
                     <strong className="font-mono text-sm text-[#162220]">
                       {simulation.baselineLst.toFixed(1)}°C
                     </strong>
@@ -421,7 +328,7 @@ export default function ScenarioLabView({
 
                   <div className="border border-[#174D46]/20 bg-[#F2F8F5] p-2 rounded-xs">
                     <span className="block font-mono text-[7.5px] text-[#174D46] uppercase">
-                      DAY {timelineDay} LST
+                      SCENARIO MODEL LST
                     </span>
                     <strong className="font-mono text-sm text-[#174D46]">
                       {currentTimelineTemp.toFixed(1)}°C
@@ -443,76 +350,19 @@ export default function ScenarioLabView({
                     <span className="text-gray-600">{simulation.baselineRisk}</span>
                     <span>➔</span>
                     <span className="text-[#2E684A] font-bold">
-                      {timelineDay >= 10 ? simulation.scenarioRisk : simulation.baselineRisk}
+                      {simulation.scenarioRisk}
                     </span>
                   </span>
                 </div>
 
                 <p className="text-[8.5px] text-[#6B7E7A] border-t border-[#D7E5DF] pt-1">
-                  Modelled counterfactual from HeatWise XGBoost model showing municipal plan execution over time.
+                  The displayed cooling is the isolated model response to the selected intervention inputs. It is not an observed post-implementation result.
                 </p>
               </div>
             )}
           </div>
 
-          {/* 3. 5 / 10 / 15-Day Post-Intervention Monitoring & Abnormality Alert */}
-          <div className="border-t border-[#EDF2EF] pt-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-[#6B7E7A]">
-                POST-INTERVENTION MONITORING
-              </span>
-              <span className="font-mono text-[8px] text-[#5C6E6A]">IN-SITU OBSERVATIONS</span>
-            </div>
-
-            {/* 3-Row Indicator for Day 5, 10, 15 */}
-            <div className="space-y-1 font-mono text-[10px]">
-              {simulation.observations.map((obs) => (
-                <div
-                  key={obs.day}
-                  className={`flex items-center justify-between p-1.5 rounded-xs border transition-colors ${
-                    timelineDay === obs.day
-                      ? "bg-[#E8F3EE] border-[#174D46] font-bold"
-                      : "bg-[#FAFBFA] border-[#EDF2EF]"
-                  }`}
-                >
-                  <span className="font-semibold text-[#162220]">Day {obs.day}</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[#6B7E7A]">
-                      Obs: {obs.observedDeltaC > 0 ? `+${obs.observedDeltaC}` : obs.observedDeltaC}°C
-                    </span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-2xs font-bold ${
-                        obs.status === "Normal"
-                          ? "bg-[#E8F3EE] text-[#2E684A]"
-                          : "bg-[#FFF0EE] text-[#C93B2B]"
-                      }`}
-                    >
-                      {obs.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Thermal Anomaly Detected Alert */}
-            {simulation.anomalyReport.anomalyStatus === "Anomaly Detected" && (
-              <div className="border border-[#D9822B] bg-[#FFF9F0] p-2.5 rounded-xs space-y-1.5">
-                <div className="flex items-center gap-1.5 text-[#8C4600] font-bold text-xs">
-                  <span>⚠</span>
-                  <span>THERMAL ANOMALY DETECTED</span>
-                </div>
-                <p className="text-[9.5px] text-[#8C4600] leading-3.5">
-                  Observed heat remains above the expected post-intervention range. Observation period: 15 days.
-                </p>
-                <button
-                  onClick={() => setShowAnomalyModal(true)}
-                  className="w-full mt-1 bg-[#8C4600] hover:bg-[#6E3600] text-white font-mono text-[9.5px] font-bold py-1.5 rounded-xs transition-colors cursor-pointer"
-                >
-                  VIEW ANOMALY REPORT ➔
-                </button>
-              </div>
-            )}
-          </div>
+          <div className="border-t border-[#EDF2EF] pt-3"><span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-[#6B7E7A]">OBSERVED VALIDATION</span><p className="mt-2 border border-dashed border-[#CBD7D2] bg-[#FAFBFA] p-3 text-[10px] leading-4 text-[#5C6E6A]">No dated satellite or ground observation has been ingested for this intervention. HeatWise will not display a monitoring result until a real baseline/post-observation pair is available.</p></div>
         </section>
       </div>
 

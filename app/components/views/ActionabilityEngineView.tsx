@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CITIES_DATA, CityName, SeasonName, Hotspot } from "../../data/heatData";
 import IndiaMap from "../map/IndiaMap";
 
@@ -11,9 +11,11 @@ type Inventory = {
   roadSegments: number;
   parkOrOpenSpaceCount: number;
   waterFeatureCount: number;
+  assets: { buildings: SpatialAsset[]; corridors: SpatialAsset[]; parks: SpatialAsset[]; waterBodies: SpatialAsset[] };
   retrievedAt: string;
   cached?: boolean;
 };
+type SpatialAsset = { name: string; type: string; osmId: string };
 
 interface Props {
   city: CityName;
@@ -68,37 +70,6 @@ export default function ActionabilityEngineView({
   const roadSegments = inventory?.roadSegments ?? Math.round(parseFloat(ward.builtFraction) * 0.5 + 20);
   const parkCount = inventory?.parkOrOpenSpaceCount ?? (parseFloat(ward.canopyCover) > 10 ? 4 : 1);
   const waterCount = inventory?.waterFeatureCount ?? (ward.driver.toLowerCase().includes("water") ? 2 : 0);
-
-  const signals = useMemo(() => [
-    {
-      code: "ROOFS / BUILT",
-      color: "#C93B2B",
-      active: buildingCount > 0,
-      title: "Cool Roof Coatings",
-      detail: `${buildingCount} mapped building footprints ready for high-albedo cool coatings.`,
-    },
-    {
-      code: "CORRIDORS",
-      color: "#D9822B",
-      active: roadSegments > 0,
-      title: "Permeable Pavement",
-      detail: `${roadSegments} road segments suitable for shading & permeable materials.`,
-    },
-    {
-      code: "GREEN CANOPY",
-      color: "#2E684A",
-      active: parkCount > 0 || parseFloat(ward.canopyCover) < 15,
-      title: "Canopy Expansion",
-      detail: `Current canopy is ${ward.canopyCover}. Target ${parkCount} priority green corridors.`,
-    },
-    {
-      code: "MICRO-WATER",
-      color: "#2878B8",
-      active: waterCount > 0,
-      title: "Urban Water Feature",
-      detail: waterCount > 0 ? `${waterCount} blue assets active.` : "No major natural water bodies in 250m.",
-    },
-  ], [buildingCount, roadSegments, parkCount, waterCount, ward.canopyCover]);
 
   return (
     <div className="view-container space-y-2.5">
@@ -236,41 +207,9 @@ export default function ActionabilityEngineView({
             </div>
           </section>
 
-          {/* Card 3: 04 · Physical Targeting Signals */}
-          <section className="border border-[#E2E8E5] bg-white p-3 shadow-xs rounded-xs flex-1 flex flex-col justify-between">
-            <div className="flex items-center justify-between border-b border-[#EDF2EF] pb-1.5">
-              <h3 className="font-sans text-xs font-bold text-[#162220]">
-                03 · Physical Targeting Signals
-              </h3>
-              <span className="font-mono text-[8px] font-bold text-[#174D46]">
-                FEASIBILITY SIGNALS
-              </span>
-            </div>
-
-            <div className="mt-2 grid grid-cols-2 gap-1.5">
-              {signals.map((signal) => (
-                <div
-                  key={signal.code}
-                  className={`border p-2 rounded-2xs transition-all ${
-                    signal.active
-                      ? "border-[#D0E2DB] bg-[#F7FBF9]"
-                      : "border-[#E8ECEA] bg-[#FAFBFA] opacity-70"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[7.5px] font-bold" style={{ color: signal.color }}>
-                      {signal.code}
-                    </span>
-                    <i
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ backgroundColor: signal.active ? signal.color : "#A8B3AF" }}
-                    />
-                  </div>
-                  <h4 className="mt-0.5 text-[11px] font-bold text-[#162220]">{signal.title}</h4>
-                  <p className="mt-0.5 text-[9px] leading-3 text-[#4F615D]">{signal.detail}</p>
-                </div>
-              ))}
-            </div>
+          <section className="border border-[#E2E8E5] bg-white p-3 shadow-xs rounded-xs">
+            <div className="flex items-center justify-between border-b border-[#EDF2EF] pb-1.5"><h3 className="font-sans text-xs font-bold text-[#162220]">03 · Live named asset register</h3><span className="font-mono text-[8px] font-bold text-[#174D46]">OSM OBJECTS · 250 m</span></div>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">{[["Building footprints", inventory?.assets.buildings, "#0B253F"], ["Street corridors", inventory?.assets.corridors, "#D9822B"], ["Parks / open space", inventory?.assets.parks, "#2E684A"], ["Waterways / water bodies", inventory?.assets.waterBodies, "#2878B8"]].map(([label, list, color]) => { const assets = (list as SpatialAsset[] | undefined) ?? []; const named = assets.filter((asset) => !asset.name.startsWith("Building footprint #") && !asset.name.startsWith("Unnamed")); const unnamedCount = assets.length - named.length; return <div key={String(label)} className="border border-[#E2E8E5] bg-[#FAFBFA] p-2"><div className="flex justify-between"><strong className="text-[10px]">{label}</strong><span className="font-mono text-[8px]" style={{ color: String(color) }}>{assets.length}</span></div><div className="mt-1 max-h-24 space-y-1 overflow-y-auto">{named.length ? named.map((asset) => <div key={`${asset.osmId}-${asset.name}`} className="border-l-2 pl-1.5 text-[9px]" style={{ borderColor: String(color) }}><strong className="block truncate">{asset.name}</strong><span className="font-mono text-[7.5px] text-[#5C6E6A]">{asset.type} · OSM {asset.osmId}</span></div>) : <span className="text-[9px] text-[#5C6E6A]">No named mapped feature.</span>}{unnamedCount > 0 && <p className="border-t border-[#E2E8E5] pt-1 font-mono text-[7.5px] text-[#7A8C88]">+ {unnamedCount} unnamed mapped object{unnamedCount === 1 ? "" : "s"}</p>}</div></div>; })}</div>
           </section>
         </div>
 
@@ -305,40 +244,6 @@ export default function ActionabilityEngineView({
             </div>
           </section>
 
-          {/* Card 2: 05 · Verification & Outcome Loop */}
-          <section className="border border-[#D7E5DF] bg-[#F7FBF8] p-3 shadow-xs rounded-xs">
-            <div className="flex items-center justify-between border-b border-[#D7E5DF] pb-1.5">
-              <span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-[#174D46]">
-                05 · VERIFICATION & OUTCOME LOOP
-              </span>
-              <span className="border border-[#174D46]/25 bg-white px-1.5 py-0.2 font-mono text-[7.5px] font-bold text-[#174D46] rounded-2xs">
-                SATELLITE AUDIT PAIR
-              </span>
-            </div>
-
-            <div className="mt-2 grid grid-cols-4 gap-1.5">
-              {[
-                ["T0", "Baseline Scene", "Pre-work satellite thermal LST."],
-                ["T1", "Record Plan", "Municipal intervention log."],
-                ["T+?", "Valid Scene", "First cloud-free satellite post-scene."],
-                ["Δ", "Adjusted Result", "Treated ΔLST vs matched control."],
-              ].map(([step, title, detail], index) => (
-                <div
-                  key={step}
-                  className="relative border border-[#D7E5DF] bg-white p-2 rounded-2xs shadow-3xs"
-                >
-                  <span className="font-mono text-[9px] font-extrabold text-[#174D46] bg-[#E8F3EE] px-1 py-0.2 rounded-2xs">
-                    {step}
-                  </span>
-                  <h4 className="mt-1 text-[10.5px] font-bold text-[#162220]">{title}</h4>
-                  <p className="mt-0.5 text-[8.5px] leading-3 text-[#5C6E6A]">{detail}</p>
-                  {index < 3 && (
-                    <span className="absolute -right-1.5 top-1/2 hidden h-px w-2.5 bg-[#7AA89A] md:block" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
       </div>
     </div>
