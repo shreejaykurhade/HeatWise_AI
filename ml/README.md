@@ -2,6 +2,18 @@
 
 This directory contains the local-only training pipeline and the compact artifacts used for production inference.
 
+## Experimental surface-energy PINN
+
+`train_surface_energy_pinn.py` trains a separate neural LST model with a partial
+surface-energy-balance residual. It uses only available fields: solar radiation,
+albedo, emissivity, air temperature, wind, evapotranspiration and date, alongside
+urban-form features. The exported model is available through
+`/api/heat-prediction?model=pinn` and `POST /api/heat-prediction?model=pinn`.
+
+It is intentionally labelled `experimental_not_operational`: the supplied synthetic
+dataset does not include measured net longwave radiation, ground heat flux, or
+same-pixel temporal pairs. XGBoost remains the deployed decision model.
+
 ## Architecture
 
 1. **XGBRegressor** predicts land-surface temperature from satellite indices, vegetation/forest proxies, built form, population density, industrial proximity, weather, pollution, water proximity, geography and seasonality.

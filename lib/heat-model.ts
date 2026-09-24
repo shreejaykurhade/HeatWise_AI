@@ -41,9 +41,15 @@ export type HeatPrediction = {
   keyDrivers: Array<{ feature: string; importance: number }>;
   validation: {
     temperatureMaeC: number;
+    temperatureRmseC: number;
     temperatureR2: number;
+    hotspotAccuracy: number;
+    hotspotPrecision: number;
+    hotspotRecall: number;
     hotspotRocAuc: number;
+    hotspotPrAuc: number;
     hotspotF1: number;
+    hotspotBrier: number;
     decisionThreshold: number;
     holdoutCities: string[];
   };
@@ -131,9 +137,15 @@ export function predictUrbanHeat(rawInput: NumericInput): HeatPrediction {
     keyDrivers: artifact.metadata.classification_importance.slice(0, 8),
     validation: {
       temperatureMaeC: artifact.metadata.regression_metrics.mae_c as number,
+      temperatureRmseC: artifact.metadata.regression_metrics.rmse_c as number,
       temperatureR2: artifact.metadata.regression_metrics.r2 as number,
+      hotspotAccuracy: artifact.metadata.classification_metrics.accuracy as number,
+      hotspotPrecision: artifact.metadata.classification_metrics.precision as number,
+      hotspotRecall: artifact.metadata.classification_metrics.recall as number,
       hotspotRocAuc: artifact.metadata.classification_metrics.roc_auc as number,
+      hotspotPrAuc: artifact.metadata.classification_metrics.pr_auc as number,
       hotspotF1: artifact.metadata.classification_metrics.f1 as number,
+      hotspotBrier: artifact.metadata.classification_metrics.brier as number,
       decisionThreshold: threshold,
       holdoutCities: ["Bengaluru", "Delhi", "Mumbai"],
     },

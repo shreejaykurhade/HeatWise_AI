@@ -12,7 +12,20 @@ type ModelPrediction = {
   modelVersion: string;
   keyDrivers: Array<{ feature: string; importance: number }>;
   imputedFeatures: string[];
-  validation: { temperatureMaeC: number; temperatureR2: number; hotspotRocAuc: number; hotspotF1: number };
+  validation: {
+    temperatureMaeC: number; temperatureRmseC: number; temperatureR2: number;
+    hotspotAccuracy: number; hotspotPrecision: number; hotspotRecall: number;
+    hotspotRocAuc: number; hotspotPrAuc: number; hotspotF1: number; hotspotBrier: number;
+  };
+};
+
+type PinnPrediction = {
+  predictedLstC: number;
+  modelVersion: string;
+  status: "experimental_not_operational";
+  imputedFeatures: string[];
+  validation: { temperatureMaeC: number; temperatureRmseC: number; temperatureR2: number };
+  physics: { constraint: string; availableTerms: string[]; unobservedTerms: string[] };
 };
 
 interface DriverAnalysisViewProps {
@@ -23,6 +36,9 @@ interface DriverAnalysisViewProps {
   modelPrediction: ModelPrediction | null;
   modelLoading: boolean;
   modelError: string;
+  pinnPrediction: PinnPrediction | null;
+  analysisModel: "xgboost" | "pinn";
+  onSelectAnalysisModel: (model: "xgboost" | "pinn") => void;
   inferenceTargets: InferenceTargetOption[];
   selectedInferenceTarget: string;
   onSelectInferenceTarget: (value: string) => void;
@@ -36,6 +52,9 @@ export default function DriverAnalysisView({
   modelPrediction,
   modelLoading,
   modelError,
+  pinnPrediction,
+  analysisModel,
+  onSelectAnalysisModel,
   inferenceTargets,
   selectedInferenceTarget,
   onSelectInferenceTarget,
@@ -49,6 +68,8 @@ export default function DriverAnalysisView({
   const areaHasDetailedData = !selectedArea || selectedArea.name.toLowerCase().replace(/\s+ncr$/, "") === city.toLowerCase().replace(/\s+ncr$/, "");
   const selectedAreaMatchesCity = targetIsWard && areaHasDetailedData;
   const analysisTarget = targetIsWard ? activeHotspot?.name : (selectedArea?.name ?? city);
+  const shownTemperature = analysisModel === "pinn" ? pinnPrediction?.predictedLstC : modelPrediction?.predictedLstC;
+  const shownModelVersion = analysisModel === "pinn" ? pinnPrediction?.modelVersion : modelPrediction?.modelVersion;
 
   if (!activeHotspot) return null;
   const physicalDrivers = activeHotspot.driverBreakdown.slice(0, 5);
@@ -84,8 +105,8 @@ export default function DriverAnalysisView({
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2">
         {[
           ["Selected area", selectedArea ? `${selectedArea.name}, ${selectedArea.state}` : `${city}, ${currentCityData.state}`],
-          ["Model", modelPrediction?.modelVersion ?? "XGBoost"],
-          ["Predicted surface temp", modelLoading ? "Computing…" : modelPrediction ? `${modelPrediction.predictedLstC.toFixed(1)}°C` : "Unavailable"],
+          ["Selected model", shownModelVersion ?? (analysisModel === "pinn" ? "PINN" : "XGBoost")],
+          ["Predicted surface temp", modelLoading ? "Computing…" : shownTemperature !== undefined ? `${shownTemperature.toFixed(1)}°C` : "Unavailable"],
           ["Hotspot probability", modelPrediction ? `${(modelPrediction.hotspotProbability * 100).toFixed(1)}%` : "—"],
           ["Classification", modelPrediction?.riskBand ?? (modelError || "—")],
         ].map(([label, value]) => (
@@ -99,7 +120,7 @@ export default function DriverAnalysisView({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8E5] pb-2">
         <div>
           <span className="font-mono text-[8.5px] uppercase tracking-wider text-[#174D46] font-bold">
-            XGBOOST INFERENCE · LOCAL PHYSICAL HEAT EXPLANATION
+            {analysisModel === "pinn" ? "EXPERIMENTAL PINN · SURFACE-ENERGY CROSS-CHECK" : "XGBOOST INFERENCE · LOCAL PHYSICAL HEAT EXPLANATION"}
           </span>
           <h2 className="font-sans text-base sm:text-lg font-bold text-[#162220]">
             Physical Heat Driver Breakdown · {analysisTarget}
@@ -107,7 +128,20 @@ export default function DriverAnalysisView({
         </div>
 
         {/* Ward Quick Switcher */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <label htmlFor="analysis-model-select" className="font-mono text-[8.5px] text-[#5C6E6A] font-bold uppercase">
+            MODEL:
+          </label>
+          <select
+            id="analysis-model-select"
+            aria-label="Select analysis model"
+            value={analysisModel}
+            onChange={(e) => onSelectAnalysisModel(e.target.value as "xgboost" | "pinn")}
+            className="w-[195px] bg-white border border-[#174D46] px-2.5 py-1 font-mono text-xs font-bold text-[#162220] rounded-xs outline-none"
+          >
+            <option value="xgboost">Operational XGBoost</option>
+            <option value="pinn">Experimental PINN</option>
+          </select>
           <label htmlFor="driver-ward-select" className="font-mono text-[8.5px] text-[#5C6E6A] font-bold uppercase">
             INFERENCE TARGET:
           </label>
@@ -140,7 +174,7 @@ export default function DriverAnalysisView({
                 Why this location is hot
               </h3>
               <p className="font-mono text-[9.5px] text-[#5C6E6A] mt-0.5">
-                Target: {analysisTarget} · Modeled LST: <strong>{modelPrediction ? `${modelPrediction.predictedLstC.toFixed(1)}°C` : "Computing…"}</strong>
+                Target: {analysisTarget} · Modeled LST: <strong>{shownTemperature !== undefined ? `${shownTemperature.toFixed(1)}°C` : "Computing…"}</strong>
               </p>
             </div>
             <span className="font-mono text-[8.5px] text-[#174D46] font-semibold">LOCAL HEAT CONTRIBUTION</span>
@@ -204,16 +238,45 @@ export default function DriverAnalysisView({
             </table>
           </div>
 
-          <div className="border border-white/10 bg-[#0B1C1A] text-white p-3.5 shadow-xs rounded-xs">
-            <div className="font-mono text-[8.5px] uppercase tracking-wider text-[#8BA8A0] mb-1 font-bold">
-              MODEL VALIDATION
+          <div className="border border-[#0B1C1A] bg-[#0B1C1A] text-white p-3.5 shadow-xs rounded-xs">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="font-mono text-[8.5px] uppercase tracking-wider text-[#8BA8A0] font-bold">MODEL PERFORMANCE</div>
+              <div className="flex items-center gap-3 font-mono text-[8px]"><span><i className="inline-block h-2 w-2 bg-[#55A993] mr-1" />XGBOOST</span><span><i className="inline-block h-2 w-2 bg-[#EFD17B] mr-1" />PINN</span></div>
             </div>
-            <div className="font-sans text-xs sm:text-sm font-bold text-white mb-1">
-              Temperature MAE: {modelPrediction ? `${modelPrediction.validation.temperatureMaeC.toFixed(2)}°C` : "—"}
+
+            <div className="space-y-3">
+              {[
+                { label: "LST MAE · LOWER IS BETTER", xgb: modelPrediction?.validation.temperatureMaeC ?? 0.9786, pinn: pinnPrediction?.validation.temperatureMaeC ?? 1.09, max: 1.5, unit: "°C" },
+                { label: "LST RMSE · LOWER IS BETTER", xgb: modelPrediction?.validation.temperatureRmseC ?? 1.2252, pinn: pinnPrediction?.validation.temperatureRmseC ?? 1.3715, max: 1.5, unit: "°C" },
+                { label: "LST R² · HIGHER IS BETTER", xgb: modelPrediction?.validation.temperatureR2 ?? 0.97659, pinn: pinnPrediction?.validation.temperatureR2 ?? 0.9716, max: 1, unit: "" },
+              ].map((metric) => (
+                <div key={metric.label}>
+                  <div className="mb-1 font-mono text-[8px] text-[#B6CBC5]">{metric.label}</div>
+                  <div className="grid grid-cols-[58px_1fr_42px] items-center gap-2 font-mono text-[8px]">
+                    <span>XGBoost</span><div className="h-2 bg-white/10"><div className="h-full bg-[#55A993]" style={{ width: `${Math.min(100, (metric.xgb / metric.max) * 100)}%` }} /></div><strong className="text-right">{metric.xgb.toFixed(metric.unit ? 2 : 3)}{metric.unit}</strong>
+                    <span>PINN</span><div className="h-2 bg-white/10"><div className="h-full bg-[#EFD17B]" style={{ width: `${Math.min(100, (metric.pinn / metric.max) * 100)}%` }} /></div><strong className="text-right text-[#EFD17B]">{metric.pinn.toFixed(metric.unit ? 2 : 3)}{metric.unit}</strong>
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="font-mono text-[9px] text-[#A0BCB6] leading-relaxed">
-              R² {modelPrediction?.validation.temperatureR2.toFixed(3) ?? "—"} · Hotspot ROC-AUC {modelPrediction?.validation.hotspotRocAuc.toFixed(3) ?? "—"} · F1 {modelPrediction?.validation.hotspotF1.toFixed(3) ?? "—"}
-            </p>
+
+            <div className="mt-4 border-t border-white/15 pt-3">
+              <div className="mb-2 font-mono text-[8px] text-[#B6CBC5]">XGBOOST HOTSPOT CLASSIFIER</div>
+              <div className="space-y-1.5">
+                {[
+                  ["Accuracy", modelPrediction?.validation.hotspotAccuracy ?? 0.92475],
+                  ["Precision", modelPrediction?.validation.hotspotPrecision ?? 0.60315],
+                  ["Recall", modelPrediction?.validation.hotspotRecall ?? 0.72486],
+                  ["F1", modelPrediction?.validation.hotspotF1 ?? 0.65843],
+                  ["ROC-AUC", modelPrediction?.validation.hotspotRocAuc ?? 0.95158],
+                  ["PR-AUC", modelPrediction?.validation.hotspotPrAuc ?? 0.73068],
+                ].map(([label, rawValue]) => {
+                  const value = Number(rawValue);
+                  return <div key={String(label)} className="grid grid-cols-[58px_1fr_36px] items-center gap-2 font-mono text-[8px]"><span>{label}</span><div className="h-2 bg-white/10"><div className="h-full bg-[#55A993]" style={{ width: `${value * 100}%` }} /></div><strong className="text-right">{(value * 100).toFixed(1)}%</strong></div>;
+                })}
+              </div>
+              <div className="mt-2 flex justify-between font-mono text-[8px] text-[#A0BCB6]"><span>Brier error: {(modelPrediction?.validation.hotspotBrier ?? 0.05611).toFixed(3)} ↓</span><span>Held-out: 100,286</span></div>
+            </div>
           </div>
         </div>
       </div>

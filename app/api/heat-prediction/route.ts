@@ -1,8 +1,14 @@
 import { getHeatModelMetadata, predictUrbanHeat } from "../../../lib/heat-model";
+import { getSurfaceEnergyPinnMetadata, predictSurfaceEnergyPinn } from "../../../lib/surface-energy-pinn";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const model = new URL(request.url).searchParams.get("model");
+  if (model === "pinn") {
+    const metadata = getSurfaceEnergyPinnMetadata();
+    return Response.json({ status: metadata.status, modelVersion: metadata.version, metrics: metadata.metrics, features: metadata.features, physicsConstraint: metadata.surface_energy_constraint, unobservedTerms: metadata.unobserved_terms });
+  }
   const metadata = getHeatModelMetadata();
   return Response.json({
     status: "ready",
@@ -16,6 +22,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const model = new URL(request.url).searchParams.get("model");
   let body: unknown;
   try {
     body = await request.json();
@@ -43,6 +50,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (model === "pinn") return Response.json(predictSurfaceEnergyPinn(numeric));
     return Response.json(predictUrbanHeat(numeric));
   } catch (error) {
     return Response.json(

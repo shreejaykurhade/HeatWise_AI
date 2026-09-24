@@ -34,8 +34,21 @@ type ModelPrediction = {
   modelVersion: string;
   keyDrivers: Array<{ feature: string; importance: number }>;
   imputedFeatures: string[];
-  validation: { temperatureMaeC: number; temperatureR2: number; hotspotRocAuc: number; hotspotF1: number };
+  validation: {
+    temperatureMaeC: number; temperatureRmseC: number; temperatureR2: number;
+    hotspotAccuracy: number; hotspotPrecision: number; hotspotRecall: number;
+    hotspotRocAuc: number; hotspotPrAuc: number; hotspotF1: number; hotspotBrier: number;
+  };
 };
+type PinnPrediction = {
+  predictedLstC: number;
+  modelVersion: string;
+  status: "experimental_not_operational";
+  imputedFeatures: string[];
+  validation: { temperatureMaeC: number; temperatureRmseC: number; temperatureR2: number };
+  physics: { constraint: string; availableTerms: string[]; unobservedTerms: string[] };
+};
+type AnalysisModel = "xgboost" | "pinn";
 const seasonsOrder: SeasonName[] = ["Summer", "Monsoon", "Post_Monsoon", "Winter"];
 
 const seasonLabels: Record<SeasonName, string> = {
@@ -60,6 +73,8 @@ export default function Home() {
   const [selectedAreaId, setSelectedAreaId] = useState(defaultAreaId);
   const [selectedInferenceTarget, setSelectedInferenceTarget] = useState(`place::${defaultAreaId}`);
   const [modelPrediction, setModelPrediction] = useState<ModelPrediction | null>(null);
+  const [pinnPrediction, setPinnPrediction] = useState<PinnPrediction | null>(null);
+  const [analysisModel, setAnalysisModel] = useState<AnalysisModel>("xgboost");
   const [modelLoading, setModelLoading] = useState(true);
   const [modelError, setModelError] = useState("");
 
@@ -157,33 +172,42 @@ export default function Home() {
       setModelLoading(true);
       setModelError("");
       try {
+        const inferenceInput = {
+          latitude: ward?.lat ?? selectedArea.lat,
+          longitude: ward?.lon ?? selectedArea.lon,
+          elevation_m: areaHasDetailedData ? currentCityData.elevationM : undefined,
+          distance_to_coast_km: areaHasDetailedData ? currentCityData.distanceToCoastKm : undefined,
+          month: context.month, day_of_year: context.day,
+          air_temperature_c: env?.airTempC ?? selectedArea.peakLst - selectedArea.uhiMean,
+          ndvi: ward?.ndvi ?? env?.ndvi,
+          tree_cover_fraction: numericPercent(ward?.canopyCover) ?? (env ? env.treeCoverPct / 100 : undefined),
+          impervious_surface_fraction: numericPercent(ward?.builtFraction) ?? (env ? env.imperviousPct / 100 : undefined),
+          building_density: env ? env.buildingDensityPct / 100 : undefined,
+          building_height_m: ward ? Number.parseFloat(ward.buildingHeight) : env?.buildingHeightM,
+          population_density_per_km2: env?.populationDensity,
+          sky_view_factor: typeof ward?.skyView === "number" ? ward.skyView : env?.skyViewFactor,
+          albedo: typeof ward?.albedo === "number" ? ward.albedo : env?.albedo,
+          relative_humidity_pct: env?.humidityPct,
+          wind_speed_ms: ward ? Number.parseFloat(ward.windSpeed) : env?.windSpeedMs,
+          solar_radiation_wm2: env?.solarRadiationWm2,
+          pm25_ug_m3: ward ? Number.parseFloat(ward.pm25) : env?.pm25UgM3,
+          industrial_proximity_index: /industrial/i.test(`${ward?.name ?? ""} ${ward?.driver ?? ""} ${selectedArea.zone}`) ? 85 : 25,
+          is_monsoon: season === "Monsoon" ? 1 : 0,
+        };
         const response = await fetch("/api/heat-prediction", {
           method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
-          body: JSON.stringify({
-            latitude: ward?.lat ?? selectedArea.lat,
-            longitude: ward?.lon ?? selectedArea.lon,
-            elevation_m: areaHasDetailedData ? currentCityData.elevationM : undefined,
-            distance_to_coast_km: areaHasDetailedData ? currentCityData.distanceToCoastKm : undefined,
-            month: context.month, day_of_year: context.day,
-            air_temperature_c: env?.airTempC ?? selectedArea.peakLst - selectedArea.uhiMean,
-            ndvi: ward?.ndvi ?? env?.ndvi,
-            tree_cover_fraction: numericPercent(ward?.canopyCover) ?? (env ? env.treeCoverPct / 100 : undefined),
-            impervious_surface_fraction: numericPercent(ward?.builtFraction) ?? (env ? env.imperviousPct / 100 : undefined),
-            building_density: env ? env.buildingDensityPct / 100 : undefined,
-            building_height_m: ward ? Number.parseFloat(ward.buildingHeight) : env?.buildingHeightM,
-            population_density_per_km2: env?.populationDensity,
-            sky_view_factor: typeof ward?.skyView === "number" ? ward.skyView : env?.skyViewFactor,
-            albedo: typeof ward?.albedo === "number" ? ward.albedo : env?.albedo,
-            relative_humidity_pct: env?.humidityPct,
-            wind_speed_ms: ward ? Number.parseFloat(ward.windSpeed) : env?.windSpeedMs,
-            solar_radiation_wm2: env?.solarRadiationWm2,
-            pm25_ug_m3: ward ? Number.parseFloat(ward.pm25) : env?.pm25UgM3,
-            industrial_proximity_index: /industrial/i.test(`${ward?.name ?? ""} ${ward?.driver ?? ""} ${selectedArea.zone}`) ? 85 : 25,
-            is_monsoon: season === "Monsoon" ? 1 : 0,
-          }),
+          body: JSON.stringify(inferenceInput),
         });
         if (!response.ok) throw new Error("Model inference failed");
         setModelPrediction(await response.json());
+        if (analysisModel === "pinn") {
+          const pinnResponse = await fetch("/api/heat-prediction?model=pinn", {
+            method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+            body: JSON.stringify(inferenceInput),
+          });
+          if (!pinnResponse.ok) throw new Error("PINN inference failed");
+          setPinnPrediction(await pinnResponse.json());
+        }
       } catch (error) {
         if (error instanceof Error && error.name !== "AbortError") setModelError(error.message);
       } finally {
@@ -192,7 +216,7 @@ export default function Home() {
     };
     void runInference();
     return () => controller.abort();
-  }, [activeHotspot, city, currentCityData, currentSeasonData, season, selectedArea, selectedInferenceTarget]);
+  }, [activeHotspot, analysisModel, city, currentCityData, currentSeasonData, season, selectedArea, selectedInferenceTarget]);
 
 
   // Keyboard shortcut listener (⌘K / Ctrl+K & Escape)
@@ -291,6 +315,9 @@ export default function Home() {
               modelPrediction={modelPrediction}
               modelLoading={modelLoading}
               modelError={modelError}
+              pinnPrediction={pinnPrediction}
+              analysisModel={analysisModel}
+              onSelectAnalysisModel={setAnalysisModel}
               inferenceTargets={inferenceTargets}
               selectedInferenceTarget={selectedInferenceTarget}
               onSelectInferenceTarget={handleSelectInferenceTarget}
