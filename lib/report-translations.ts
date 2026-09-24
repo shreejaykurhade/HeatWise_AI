@@ -245,7 +245,7 @@ const EN: ReportTranslations = {
 const HI: ReportTranslations = {
   reportTitle: "नगरपालिका शहरी ताप मूल्यांकन एवं शमन रिपोर्ट",
   reportSubtitle: "शहरी जलवायु लचीलापन | भौतिकी-निर्देशित प्रतितथ्यात्मक | उपग्रह तापीय बुद्धिमत्ता",
-  stateLabel: "राज्य / केंद्र शासित:",
+  stateLabel: "राज्य:",
   cityLabel: "शहर:",
   municipalAuthLabel: "नगर निगम:",
   hotspotLabel: "हॉटस्पॉट:",
@@ -332,7 +332,7 @@ const HI: ReportTranslations = {
 const MR: ReportTranslations = {
   reportTitle: "नगरपालिका शहरी उष्णता मूल्यांकन आणि शमन अहवाल",
   reportSubtitle: "शहरी हवामान लवचिकता | भौतिकशास्त्र-मार्गदर्शित | उपग्रह तापीय बुद्धिमत्ता",
-  stateLabel: "राज्य / केंद्रशासित:",
+  stateLabel: "राज्य:",
   cityLabel: "शहर:",
   municipalAuthLabel: "नगरपालिका:",
   hotspotLabel: "हॉटस्पॉट:",
@@ -506,9 +506,9 @@ const TE: ReportTranslations = {
 const TA: ReportTranslations = {
   reportTitle: "நகராட்சி நகர வெப்ப மதிப்பீடு & தணிப்பு அறிக்கை",
   reportSubtitle: "நகர காலநிலை மீள்தன்மை | இயற்பியல்-வழிகாட்டுதல் | செயற்கைக்கோள் வெப்ப நுண்ணறிவு",
-  stateLabel: "மாநிலம் / யூடி:",
+  stateLabel: "மாநிலம்:",
   cityLabel: "நகரம்:",
-  municipalAuthLabel: "நகராட்சி அதிகாரம்:",
+  municipalAuthLabel: "நகராட்சி:",
   hotspotLabel: "ஹாட்ஸ்பாட்:",
   coordinatesLabel: "அட்சரேகை / தீர்க்கரேகை:",
   climateZoneLabel: "காலநிலை மண்டலம்:",
@@ -593,7 +593,7 @@ const TA: ReportTranslations = {
 const KN: ReportTranslations = {
   reportTitle: "ನಗರಪಾಲಿಕೆ ನಗರ ಉಷ್ಣತೆ ಮೌಲ್ಯಮಾಪನ ಮತ್ತು ಶಮನ ವರದಿ",
   reportSubtitle: "ನಗರ ಹವಾಮಾನ ಸ್ಥಿತಿಸ್ಥಾಪಕತ್ವ | ಭೌತಶಾಸ್ತ್ರ-ಮಾರ್ಗದರ್ಶಿ | ಉಪಗ್ರಹ ಉಷ್ಣ ಬುದ್ಧಿಮತ್ತೆ",
-  stateLabel: "ರಾಜ್ಯ / ಕೇಂದ್ರಾಡಳಿತ:",
+  stateLabel: "ರಾಜ್ಯ:",
   cityLabel: "ನಗರ:",
   municipalAuthLabel: "ನಗರಪಾಲಿಕೆ:",
   hotspotLabel: "ಹಾಟ್‌ಸ್ಪಾಟ್:",
@@ -680,7 +680,7 @@ const KN: ReportTranslations = {
 const BN: ReportTranslations = {
   reportTitle: "পৌর নগর তাপ মূল্যায়ন ও প্রশমন প্রতিবেদন",
   reportSubtitle: "নগর জলবায়ু স্থিতিস্থাপকতা | পদার্থবিদ্যা-নির্দেশিত | উপগ্রহ তাপীয় বুদ্ধিমত্তা",
-  stateLabel: "রাজ্য / কেন্দ্রশাসিত:",
+  stateLabel: "রাজ্য:",
   cityLabel: "শহর:",
   municipalAuthLabel: "পৌর কর্তৃপক্ষ:",
   hotspotLabel: "হটস্পট:",
@@ -767,7 +767,7 @@ const BN: ReportTranslations = {
 const GU: ReportTranslations = {
   reportTitle: "મ્યુનિસિપલ શહેરી ગરમી મૂલ્યાંકન અને શમન અહેવાલ",
   reportSubtitle: "શહેરી આબોહવા સ્થિતિસ્થાપકતા | ભૌતિકશાસ્ત્ર-માર્ગદર્શિત | ઉપગ્રહ તાપીય બુદ્ધિ",
-  stateLabel: "રાજ્ય / કેન્દ્રશાસિત:",
+  stateLabel: "રાજ્ય:",
   cityLabel: "શહેર:",
   municipalAuthLabel: "મ્યુનિસિપલ:",
   hotspotLabel: "હોટસ્પોટ:",

@@ -98,6 +98,17 @@ const clean = (str: string): string => {
   if (!str) return "";
   return str
     .replace(/°C/g, " C")
+    .replace(/℃/g, " C")
+    .replace(/μg\/m³/g, "ug/m3")
+    .replace(/µg\/m³/g, "ug/m3")
+    .replace(/μg\/m3/g, "ug/m3")
+    .replace(/µg\/m3/g, "ug/m3")
+    .replace(/μg/g, "ug")
+    .replace(/µg/g, "ug")
+    .replace(/m³/g, "m3")
+    .replace(/m²/g, "m2")
+    .replace(/²/g, "2")
+    .replace(/³/g, "3")
     .replace(/↓/g, "v")
     .replace(/↑/g, "^")
     .replace(/⟶/g, "->")
@@ -434,6 +445,7 @@ export async function GET(request: Request) {
   p1.drawRectangle({ x: MX, y: y - 58, width: CW, height: 60, color: lightBg, borderColor: bdrGrey, borderWidth: 0.75 });
 
   // 3 columns × 3 rows with translated labels
+  const colXOffsets = [MX + 8, MX + 172, MX + 338];
   const meta = [
     [[t.stateLabel, cityData.state], [t.cityLabel, cityData.name], [t.municipalAuthLabel, authorityName]],
     [[t.hotspotLabel, hotspot.name], [t.coordinatesLabel, `${hotspot.lat.toFixed(4)} N, ${hotspot.lon.toFixed(4)} E`], [t.climateZoneLabel, cityData.climateZone]],
@@ -441,10 +453,10 @@ export async function GET(request: Request) {
   ];
   meta.forEach((row, ri) => {
     row.forEach(([lbl, val], ci) => {
-      const cx = MX + 8 + ci * 170;
+      const cx = colXOffsets[ci];
       const ry = y - 14 - ri * 16;
-      p1.drawText(fitCell(lbl, 60, fontB, 5.8), { x: cx, y: ry, size: 5.8, font: fontB, color: muted });
-      p1.drawText(fitCell(val, 104, fontB, 5.8), { x: cx + 62, y: ry, size: 5.8, font: fontB, color: navy });
+      p1.drawText(fitCell(lbl, 52, fontB, 5.8), { x: cx, y: ry, size: 5.8, font: fontB, color: muted });
+      p1.drawText(fitCell(val, 110, fontB, 5.8), { x: cx + 54, y: ry, size: 5.8, font: fontB, color: navy });
     });
   });
   y -= 74;
