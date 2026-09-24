@@ -13,24 +13,63 @@ import {
 interface ReportsViewProps {
   city: CityName;
   season: SeasonName;
+  selectedHotspotName: string;
 }
 
-export default function ReportsView({ city, season }: ReportsViewProps) {
+type SpatialAsset = { name: string; type: string; osmId: string };
+type ActionabilityInventory = {
+  source: "OpenStreetMap";
+  radiusM: number;
+  buildingCount: number;
+  roadSegments: number;
+  parkOrOpenSpaceCount: number;
+  waterFeatureCount: number;
+  assets: {
+    buildings: SpatialAsset[];
+    corridors: SpatialAsset[];
+    parks: SpatialAsset[];
+    waterBodies: SpatialAsset[];
+  };
+  geospatialContext?: { contextSummary: string; ecoConstraintWarning?: string };
+  retrievedAt: string;
+};
+
+export default function ReportsView({ city, season, selectedHotspotName }: ReportsViewProps) {
   const currentCityData = CITIES_DATA[city];
   const currentSeasonData = currentCityData.seasons[season];
   const hotspots: readonly Hotspot[] = currentSeasonData.hotspots;
-  const primaryHotspot = hotspots[0];
+  const primaryHotspot = hotspots.find((hotspot) => hotspot.name === selectedHotspotName) ?? hotspots[0];
 
   // Default to state's mother tongue
   const defaultStateLang = getDefaultLanguage(currentCityData.state);
   const [selectedLang, setSelectedLang] = useState<ReportLanguage>(defaultStateLang);
   const [delivery, setDelivery] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [deliveryMessage, setDeliveryMessage] = useState("");
+  const [inventory, setInventory] = useState<ActionabilityInventory | null>(null);
+  const [inventoryError, setInventoryError] = useState("");
 
   // Update language when city/state changes if user hasn't explicitly customized or wants default
   useEffect(() => {
     setSelectedLang(getDefaultLanguage(currentCityData.state));
   }, [city, currentCityData.state]);
+
+  useEffect(() => {
+    if (!primaryHotspot) return;
+    const controller = new AbortController();
+    setInventory(null);
+    setInventoryError("");
+    fetch(`/api/site-inventory?lat=${primaryHotspot.lat}&lon=${primaryHotspot.lon}&radiusM=250`, { signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json() as ActionabilityInventory & { error?: string };
+        if (!response.ok) throw new Error(data.error || "Live asset inventory is unavailable.");
+        setInventory(data);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setInventoryError(error instanceof Error ? error.message : "Live asset inventory is unavailable.");
+      });
+    return () => controller.abort();
+  }, [primaryHotspot]);
 
   const availableLanguages = getAvailableLanguages();
   const currentLangMeta = LANGUAGES[selectedLang] || LANGUAGES.en;
@@ -102,7 +141,7 @@ export default function ReportsView({ city, season }: ReportsViewProps) {
             </span>
           </div>
           <h2 className="font-sans text-base sm:text-lg font-bold text-[#162220] mt-0.5">
-            Heat Mitigation Assessment Report · {city}, {currentCityData.state}
+            Heat Mitigation Assessment Report · {primaryHotspot?.name ?? city}, {currentCityData.state}
           </h2>
         </div>
 
@@ -315,10 +354,13 @@ export default function ReportsView({ city, season }: ReportsViewProps) {
         {/* Section 4: Contributing Drivers */}
         <div className="space-y-1.5">
           <h3 className="font-sans text-xs sm:text-sm font-bold text-[#0B253F] uppercase tracking-wider border-b border-[#EDF2EF] pb-1">
-            4. {t.sec5_driverAnalysis}
+            4. Why {primaryHotspot?.name ?? "this location"} is hot · {t.sec5_driverAnalysis}
           </h3>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {primaryHotspot?.driverBreakdown.slice(0, 3).map((driver) => (
+          <p className="text-[10px] text-[#5C6E6A]">
+            Modelled local physical contributions. Red adds heat; green offsets heat. These are not raw model feature labels.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-5">
+            {primaryHotspot?.driverBreakdown.slice(0, 5).map((driver) => (
               <div key={driver.name} className="border border-[#E2E8E5] bg-[#FAFBFA] p-3 rounded-xs">
                 <div className="font-mono text-[9px] uppercase tracking-wider text-[#5C6E6A]">
                   {t.modelledDriver}
@@ -326,12 +368,67 @@ export default function ReportsView({ city, season }: ReportsViewProps) {
                 <div className="mt-1 font-sans text-xs font-semibold text-[#162220]">
                   {driver.name}
                 </div>
-                <div className="mt-1 font-mono text-[11px] font-bold text-[#C93B2B]">
+                <div className={`mt-1 font-mono text-[11px] font-bold ${driver.val >= 0 ? "text-[#C93B2B]" : "text-[#2E684A]"}`}>
                   {driver.val >= 0 ? "+" : ""}{driver.val.toFixed(1)}°C
+                </div>
+                <div className="mt-0.5 font-mono text-[8px] text-[#5C6E6A]">
+                  {driver.val >= 0 ? "heating contribution" : "cooling contribution"}
                 </div>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Section 5: Location-specific Actionability evidence */}
+        <div className="space-y-2">
+          <h3 className="font-sans text-xs sm:text-sm font-bold text-[#0B253F] uppercase tracking-wider border-b border-[#EDF2EF] pb-1">
+            5. Location Actionability Evidence · {primaryHotspot?.name ?? city}
+          </h3>
+          <p className="text-[10px] text-[#5C6E6A]">
+            Live OpenStreetMap inventory within 250 m of the selected hotspot. It identifies mapped assets for survey and planning; it does not prove ownership, condition, or sanction feasibility.
+          </p>
+          {inventory ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  ["Built footprints", inventory.buildingCount],
+                  ["Street corridors", inventory.roadSegments],
+                  ["Open / green spaces", inventory.parkOrOpenSpaceCount],
+                  ["Water features", inventory.waterFeatureCount],
+                ].map(([label, count]) => (
+                  <div key={String(label)} className="border border-[#CFE1DE] bg-[#F7FBF9] p-2 rounded-xs">
+                    <div className="font-mono text-[8px] uppercase text-[#5C6E6A]">{label}</div>
+                    <div className="font-mono text-base font-bold text-[#174D46]">{count}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 text-[10px]">
+                {[
+                  ["Mapped corridors", inventory.assets.corridors],
+                  ["Mapped parks / open space", inventory.assets.parks],
+                  ["Mapped water features", inventory.assets.waterBodies],
+                  ["Mapped built assets", inventory.assets.buildings],
+                ].map(([label, assets]) => {
+                  const named = (assets as SpatialAsset[]).filter((asset) => !asset.name.startsWith("Unnamed") && !asset.name.startsWith("Building footprint")).slice(0, 4);
+                  return (
+                    <div key={String(label)} className="border border-[#E2E8E5] bg-[#FAFBFA] p-2 rounded-xs">
+                      <div className="font-mono text-[8px] uppercase tracking-wide text-[#174D46]">{label}</div>
+                      <div className="mt-1 text-[#162220] leading-relaxed">
+                        {named.length ? named.map((asset) => asset.name).join(" · ") : "No named mapped assets returned in this category."}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {inventory.geospatialContext?.ecoConstraintWarning && (
+                <p className="border-l-2 border-[#D96527] bg-[#FFF9F2] px-2 py-1 text-[10px] text-[#8C4A14]">{inventory.geospatialContext.ecoConstraintWarning}</p>
+              )}
+            </div>
+          ) : (
+            <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-3 text-[10px] text-[#5C6E6A]">
+              {inventoryError || "Loading live OpenStreetMap asset evidence for this location…"}
+            </div>
+          )}
         </div>
 
         {/* Section 5: Data Sources & Satellite Observational Provenance */}

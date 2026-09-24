@@ -15,6 +15,22 @@ import {
 
 export const runtime = "nodejs";
 
+type SpatialAsset = { name: string; type: string; osmId: string };
+type ActionabilityInventory = {
+  radiusM: number;
+  buildingCount: number;
+  roadSegments: number;
+  parkOrOpenSpaceCount: number;
+  waterFeatureCount: number;
+  assets: {
+    buildings: SpatialAsset[];
+    corridors: SpatialAsset[];
+    parks: SpatialAsset[];
+    waterBodies: SpatialAsset[];
+  };
+  geospatialContext?: { contextSummary: string; ecoConstraintWarning?: string };
+};
+
 const seasons: SeasonName[] = ["Summer", "Monsoon", "Post_Monsoon", "Winter"];
 
 const MUNICIPAL_AUTHORITIES: Record<string, string> = {
@@ -177,6 +193,17 @@ export async function GET(request: Request) {
     : getDefaultLanguage(cityData.state);
   const langMeta = LANGUAGES[langCode] || LANGUAGES.en;
   const t = getTranslations(langCode);
+
+  // Keep the PDF tied to the same location evidence shown in Actionability Engine.
+  // This is a live OSM inventory, so a failed request is reported as unavailable—not replaced with made-up assets.
+  let actionability: ActionabilityInventory | null = null;
+  try {
+    const inventoryUrl = new URL(`/api/site-inventory?lat=${hotspot.lat}&lon=${hotspot.lon}&radiusM=250`, request.url);
+    const inventoryResponse = await fetch(inventoryUrl, { signal: AbortSignal.timeout(8_000) });
+    if (inventoryResponse.ok) actionability = await inventoryResponse.json() as ActionabilityInventory;
+  } catch {
+    actionability = null;
+  }
 
   /* Simulations */
   const primarySim = simulateIntervention(hotspot, cityData, seasonData, season, reqIntervention, reqIntensity);
@@ -536,23 +563,43 @@ export async function GET(request: Request) {
   y = secHead(p2, y, "5", t.sec5_driverAnalysis);
   const dX = [MX + 6, MX + 155, MX + 255, MX + 370];
   const dW = [147, 98, 113, CW - 330];
+  const localSignalForDriver = (driverName: string) => {
+    const name = driverName.toLowerCase();
+    if (name.includes("impervious") || name.includes("built")) return `Impervious cover ${hotspot.builtFraction}`;
+    if (name.includes("canopy") || name.includes("vegetation") || name.includes("green")) return `Canopy cover ${hotspot.canopyCover}`;
+    if (name.includes("roof") || name.includes("albedo")) return `Surface albedo ${hotspot.albedo}`;
+    if (name.includes("ventilation") || name.includes("wind")) return `Surface wind ${hotspot.windSpeed}`;
+    return "Modelled local contribution";
+  };
   const driverRows = hotspot.driverBreakdown.slice(0, 5).map((d, i) => {
     const isH = d.val > 0;
     return {
-      texts: [d.name, [hotspot.builtFraction, hotspot.canopyCover, hotspot.buildingHeight, `${hotspot.albedo}`, hotspot.windSpeed][i] || "-", `${isH ? "+" : ""}${d.val.toFixed(1)} C`, Math.abs(d.val) > 2 ? t.highInfluence : t.moderate],
+      texts: [d.name, localSignalForDriver(d.name), `${isH ? "+" : ""}${d.val.toFixed(1)} C`, Math.abs(d.val) > 2 ? t.highInfluence : t.moderate],
       fonts: [fontB, fontR, fontB, fontB],
       colors: [dark, navy, isH ? red : green, isH ? red : forest],
     };
   });
   y = dataTable(p2, y, [t.modelledDriver, t.localValue, t.thermalImpact, t.influence], navy, dX, dW, driverRows);
 
-  // ── Section 6: Geospatial Context ──
-  y = secHead(p2, y, "6", t.sec6_geospatialContext);
-  const geoItems = [
-    [t.builtEnv, `High built fraction (${hotspot.builtFraction}) | Bldg height ${hotspot.buildingHeight} | High thermal mass`, false],
-    [t.greenInfra, `Canopy deficit (${hotspot.canopyCover}) | Low NDVI | Priority for urban afforestation`, false],
-    [t.blueInfra, `Coast distance ${cityData.distanceToCoastKm.toFixed(0)} km | Limited moisture buffering at peak daylight`, false],
-    [t.constraints, "Potential ecological constraint - verify with municipal/regulatory planning data", true],
+  // ── Section 6: Location Actionability Evidence ──
+  y = secHead(p2, y, "6", "Location Actionability Evidence (Live OSM, 250 m)");
+  const namedAssets = (assets: SpatialAsset[], fallback: string) => {
+    const names = assets
+      .filter((asset) => !asset.name.startsWith("Unnamed") && !asset.name.startsWith("Building footprint"))
+      .slice(0, 3)
+      .map((asset) => asset.name);
+    return names.length ? names.join(", ") : fallback;
+  };
+  const geoItems = actionability ? [
+    ["Mapped built assets", `${actionability.buildingCount} footprints. Named: ${namedAssets(actionability.assets.buildings, "no named footprints returned")}`, false],
+    ["Mapped street corridors", `${actionability.roadSegments} segments. Named: ${namedAssets(actionability.assets.corridors, "no named corridors returned")}`, false],
+    ["Mapped green / open assets", `${actionability.parkOrOpenSpaceCount} features. Named: ${namedAssets(actionability.assets.parks, "no named parks or open spaces returned")}`, false],
+    ["Mapped blue assets", `${actionability.waterFeatureCount} features. Named: ${namedAssets(actionability.assets.waterBodies, "no named water features returned")}`, Boolean(actionability.geospatialContext?.ecoConstraintWarning)],
+  ] as [string, string, boolean][] : [
+    ["Live asset inventory", "OpenStreetMap evidence was unavailable when this PDF was generated. Re-open the report to retry; no asset counts are inferred.", true],
+    [t.builtEnv, `Physical profile: built fraction ${hotspot.builtFraction}; building height ${hotspot.buildingHeight}.`, false],
+    [t.greenInfra, `Physical profile: canopy cover ${hotspot.canopyCover}; vegetation contribution shown in Section 5.`, false],
+    [t.constraints, "Mapped assets, ownership, utilities, drainage, and statutory permissions require field verification before sanction.", true],
   ] as [string, string, boolean][];
 
   geoItems.forEach(([lbl, desc, isAlert], i) => {

@@ -318,7 +318,7 @@ export default function Home() {
           )}
 
           {view === "Reports" && (
-            <ReportsView city={city} season={season} />
+            <ReportsView city={city} season={season} selectedHotspotName={selectedHotspotName} />
           )}
         </div>
       </main>
