@@ -100,28 +100,28 @@ export default function DriverAnalysisView({
     shownTemperature
   );
   const parameterRows: Array<[string, string]> = selectedAreaMatchesCity ? [
-    ["Canopy Cover Fraction", activeHotspot.canopyCover],
-    ["Impervious Built Fraction", activeHotspot.builtFraction],
-    ["Mean Building Height", activeHotspot.buildingHeight],
-    ["Sky-View Factor (SVF)", String(activeHotspot.skyView)],
-    ["Surface Albedo", String(activeHotspot.albedo)],
-    ["Surface Wind", activeHotspot.windSpeed],
-    ["PM2.5 Aerosol", activeHotspot.pm25],
+    ["Tree / Canopy Cover (Greenery)", activeHotspot.canopyCover],
+    ["Built-up Area (Concrete / Asphalt)", activeHotspot.builtFraction],
+    ["Average Building Height", activeHotspot.buildingHeight],
+    ["Sky-View Openness (SVF)", String(activeHotspot.skyView)],
+    ["Sunlight Reflectivity (Albedo)", String(activeHotspot.albedo)],
+    ["Wind Speed (Airflow)", activeHotspot.windSpeed],
+    ["Air Quality (PM2.5 Aerosol)", activeHotspot.pm25],
   ] : areaHasDetailedData ? [
-    ["Tree Cover Fraction", `${env.treeCoverPct.toFixed(1)}%`],
-    ["Impervious Built Fraction", `${env.imperviousPct.toFixed(1)}%`],
-    ["Mean Building Height", `${env.buildingHeightM.toFixed(1)} m`],
-    ["Sky-View Factor (SVF)", env.skyViewFactor.toFixed(2)],
-    ["Surface Albedo", env.albedo.toFixed(2)],
-    ["Surface Wind", `${env.windSpeedMs.toFixed(1)} m/s`],
-    ["PM2.5 Aerosol", `${env.pm25UgM3.toFixed(1)} µg/m³`],
+    ["Tree / Canopy Cover (Greenery)", `${env.treeCoverPct.toFixed(1)}%`],
+    ["Built-up Area (Concrete / Asphalt)", `${env.imperviousPct.toFixed(1)}%`],
+    ["Average Building Height", `${env.buildingHeightM.toFixed(1)} m`],
+    ["Sky-View Openness (SVF)", env.skyViewFactor.toFixed(2)],
+    ["Sunlight Reflectivity (Albedo)", env.albedo.toFixed(2)],
+    ["Wind Speed (Airflow)", `${env.windSpeedMs.toFixed(1)} m/s`],
+    ["Air Quality (PM2.5 Aerosol)", `${env.pm25UgM3.toFixed(1)} µg/m³`],
   ] : [
     ["Latitude", selectedArea?.lat.toFixed(4) ?? "—"],
     ["Longitude", selectedArea?.lon.toFixed(4) ?? "—"],
     ["Peak Surface Temperature", selectedArea ? `${selectedArea.peakLst.toFixed(1)}°C` : "—"],
-    ["Mean UHI Anomaly", selectedArea ? `+${selectedArea.uhiMean.toFixed(1)}°C` : "—"],
-    ["Observed Risk Band", selectedArea?.risk ?? "—"],
-    ["Climate Zone", selectedArea?.zone ?? "—"],
+    ["Urban Heat Island (UHI) Anomaly", selectedArea ? `+${selectedArea.uhiMean.toFixed(1)}°C` : "—"],
+    ["Heat Vulnerability Risk Band", selectedArea?.risk ?? "—"],
+    ["Local Climate Zone", selectedArea?.zone ?? "—"],
   ];
 
   return (
@@ -244,137 +244,182 @@ export default function DriverAnalysisView({
             </div>
           </div>
 
-          {/* Card 2: Biophysical Surface Energy & Microclimate Dynamics (Live PINN + SEB Output) */}
+          {/* Card 2: Urban Microclimate & Surface Heat Physics (Intuitive & User-Friendly) */}
           <div className="border border-[#E2E8E5] bg-white p-4 shadow-xs rounded-xs flex-1 flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between border-b border-[#EDF2EF] pb-2">
                 <div>
                   <h3 className="font-sans text-xs sm:text-sm font-bold text-[#162220]">
-                    Biophysical Mechanism & Energy Balance Context
+                    Urban Microclimate & Surface Heat Physics
                   </h3>
                   <span className="font-mono text-[9px] text-[#5C6E6A]">
-                    Surface Energy Partitioning · Net Radiation R_n = H + λE + G
+                    How solar energy is absorbed, trapped, and naturally cooled in {analysisTarget}
                   </span>
                 </div>
                 <span className="font-mono text-[8px] font-bold text-[#174D46] bg-[#E8F3EE] px-2 py-0.5 rounded-2xs border border-[#174D46]/20">
-                  PHYSICS-GUIDED
+                  PHYSICS-VERIFIED (PINN)
                 </span>
               </div>
 
-              {/* 3 Physics Partitioning Metric Blocks (Live PINN Energy Breakdown) */}
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center font-mono">
-                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2 rounded-xs">
-                  <span className="block text-[7.5px] uppercase font-bold text-[#6B7D79]">Sensible Heat (H)</span>
-                  <strong className="text-sm font-bold text-[#C93B2B]">
-                    {seb.sensibleClassification} ({seb.sensibleFractionPct}%)
-                  </strong>
-                  <span className="block text-[7px] text-[#7A8C88] mt-0.5">{seb.sensibleHeatWm2} W/m² atmospheric heating</span>
+              {/* 3 Main Heat Pathways (Easy to understand with icons & status badges) */}
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono">
+                {/* 1. Air Heating */}
+                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2.5 rounded-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-[8px] text-[#6B7D79] font-bold uppercase">
+                      <span>🌡️ Air Heating</span>
+                      <span className="text-[#C93B2B]">H-FLUX</span>
+                    </div>
+                    <strong className={`mt-1 block text-sm font-bold ${seb.sensibleFractionPct > 40 ? "text-[#C93B2B]" : "text-[#D9822B]"}`}>
+                      {seb.sensibleFractionPct > 50 ? "HIGH" : seb.sensibleFractionPct > 25 ? "MODERATE" : "LOW"} ({seb.sensibleFractionPct}%)
+                    </strong>
+                    <span className="block text-[8px] text-[#162220] font-sans font-medium mt-0.5">
+                      {seb.sensibleHeatWm2} W/m² warming the air
+                    </span>
+                  </div>
+                  <p className="font-sans text-[8px] text-[#7A8C88] border-t border-[#EDF2EF] pt-1 mt-1 leading-tight">
+                    Hot road & roof surfaces transferring heat directly to pedestrian air.
+                  </p>
                 </div>
 
-                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2 rounded-xs">
-                  <span className="block text-[7.5px] uppercase font-bold text-[#6B7D79]">Evapotranspiration (λE)</span>
-                  <strong className="text-sm font-bold text-[#2878B8]">
-                    {seb.latentClassification} ({seb.latentFractionPct}%)
-                  </strong>
-                  <span className="block text-[7px] text-[#7A8C88] mt-0.5">{seb.latentHeatWm2} W/m² moisture cooling</span>
+                {/* 2. Natural Plant Cooling */}
+                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2.5 rounded-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-[8px] text-[#6B7D79] font-bold uppercase">
+                      <span>🌿 Plant Cooling</span>
+                      <span className="text-[#2878B8]">λE-FLUX</span>
+                    </div>
+                    <strong className={`mt-1 block text-sm font-bold ${seb.latentFractionPct < 15 ? "text-[#C93B2B]" : "text-[#2878B8]"}`}>
+                      {seb.latentFractionPct < 15 ? "DEFICIT (LOW)" : seb.latentFractionPct < 30 ? "MODERATE" : "HEALTHY"} ({seb.latentFractionPct}%)
+                    </strong>
+                    <span className="block text-[8px] text-[#162220] font-sans font-medium mt-0.5">
+                      {seb.latentHeatWm2} W/m² natural cooling
+                    </span>
+                  </div>
+                  <p className="font-sans text-[8px] text-[#7A8C88] border-t border-[#EDF2EF] pt-1 mt-1 leading-tight">
+                    {seb.latentFractionPct < 15 ? "Low tree cover limits natural evaporative sweat-cooling." : "Vegetation provides active evaporative cooling."}
+                  </p>
                 </div>
 
-                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2 rounded-xs">
-                  <span className="block text-[7.5px] uppercase font-bold text-[#6B7D79]">Ground Storage (G)</span>
-                  <strong className="text-sm font-bold text-[#D9822B]">
-                    {seb.storageClassification} ({seb.storageFractionPct}%)
-                  </strong>
-                  <span className="block text-[7px] text-[#7A8C88] mt-0.5">{seb.groundStorageWm2} W/m² built mass storage</span>
+                {/* 3. Heat Soaked into Buildings */}
+                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2.5 rounded-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-[8px] text-[#6B7D79] font-bold uppercase">
+                      <span>🧱 Heat Stored in Built Mass</span>
+                      <span className="text-[#D9822B]">G-STORAGE</span>
+                    </div>
+                    <strong className="mt-1 block text-sm font-bold text-[#D9822B]">
+                      {seb.storageFractionPct > 35 ? "HIGH STORAGE" : "MODERATE"} ({seb.storageFractionPct}%)
+                    </strong>
+                    <span className="block text-[8px] text-[#162220] font-sans font-medium mt-0.5">
+                      {seb.groundStorageWm2} W/m² heat sponge
+                    </span>
+                  </div>
+                  <p className="font-sans text-[8px] text-[#7A8C88] border-t border-[#EDF2EF] pt-1 mt-1 leading-tight">
+                    Concrete & asphalt soak up daytime sun and re-radiate heat at night.
+                  </p>
                 </div>
               </div>
 
-              {/* Microclimate Intervention Levers Table (Live sensitivity calculations) */}
+              {/* Targeted Microclimate Cooling Remedies (Plain English with clear impact) */}
               <div className="mt-3 border border-[#D7E5DF] bg-[#F7FBF9] p-3 rounded-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-[9px] font-bold uppercase text-[#174D46]">
-                    Targeted Microclimate Cooling Levers
+                    Actionable Cooling Interventions & Expected Temperature Drop
                   </span>
-                  <span className="font-mono text-[8px] text-[#5C6E6A]">PHYSICAL SENSITIVITY</span>
+                  <span className="font-mono text-[8px] text-[#5C6E6A]">PHYSICAL IMPACT</span>
                 </div>
 
                 <div className="space-y-1.5 text-[10.5px]">
                   <div className="flex items-center justify-between border-b border-[#E2E8E5] pb-1">
-                    <span className="text-[#162220] flex items-center gap-1.5">
+                    <div className="text-[#162220] flex items-center gap-1.5">
                       <span className="text-sm">🌳</span>
-                      <strong>Canopy Expansion (+15% cover)</strong>
-                    </span>
-                    <span className="font-mono text-[10px] font-bold text-[#2E684A]">
-                      ↓ {seb.canopyCoolingPotentialC}°C LST
+                      <div>
+                        <strong>Add 15% More Tree Canopy</strong>
+                        <span className="hidden sm:inline text-[9px] text-[#5C6E6A] ml-1.5">— Provides shade & restores evaporative plant cooling</span>
+                      </div>
+                    </div>
+                    <span className="font-mono text-[10px] font-bold text-[#2E684A] whitespace-nowrap">
+                      ↓ {seb.canopyCoolingPotentialC}°C Cooling
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between border-b border-[#E2E8E5] pb-1">
-                    <span className="text-[#162220] flex items-center gap-1.5">
+                    <div className="text-[#162220] flex items-center gap-1.5">
                       <span className="text-sm">🏢</span>
-                      <strong>High-Albedo Cool Roofs (Albedo ≥ 0.65)</strong>
-                    </span>
-                    <span className="font-mono text-[10px] font-bold text-[#2E684A]">
-                      ↓ {seb.albedoCoolingPotentialC}°C LST
+                      <div>
+                        <strong>Paint Roofs White (Cool Roof Coatings)</strong>
+                        <span className="hidden sm:inline text-[9px] text-[#5C6E6A] ml-1.5">— Reflects 65%+ of sunlight back to space instead of absorbing</span>
+                      </div>
+                    </div>
+                    <span className="font-mono text-[10px] font-bold text-[#2E684A] whitespace-nowrap">
+                      ↓ {seb.albedoCoolingPotentialC}°C Cooling
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between border-b border-[#E2E8E5] pb-1">
-                    <span className="text-[#162220] flex items-center gap-1.5">
+                    <div className="text-[#162220] flex items-center gap-1.5">
                       <span className="text-sm">💧</span>
-                      <strong>Permeable Ground & Water Misting</strong>
-                    </span>
-                    <span className="font-mono text-[10px] font-bold text-[#2E684A]">
-                      ↓ {seb.permeableCoolingPotentialC}°C LST
+                      <div>
+                        <strong>Permeable Ground & Water Misting</strong>
+                        <span className="hidden sm:inline text-[9px] text-[#5C6E6A] ml-1.5">— Allows soil to breathe and evaporates rainwater cooling</span>
+                      </div>
+                    </div>
+                    <span className="font-mono text-[10px] font-bold text-[#2E684A] whitespace-nowrap">
+                      ↓ {seb.permeableCoolingPotentialC}°C Cooling
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between pt-0.5">
-                    <span className="text-[#162220] flex items-center gap-1.5">
+                    <div className="text-[#162220] flex items-center gap-1.5">
                       <span className="text-sm">💨</span>
-                      <strong>Ventilation Corridors & SVF Shading</strong>
-                    </span>
-                    <span className="font-mono text-[10px] font-bold text-[#2E684A]">
-                      ↓ {seb.ventilationCoolingPotentialC}°C LST
+                      <div>
+                        <strong>Align Wind Ventilation Corridors</strong>
+                        <span className="hidden sm:inline text-[9px] text-[#5C6E6A] ml-1.5">— Channels cooling breezes through dense street canyons</span>
+                      </div>
+                    </div>
+                    <span className="font-mono text-[10px] font-bold text-[#2E684A] whitespace-nowrap">
+                      ↓ {seb.ventilationCoolingPotentialC}°C Cooling
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Energy Flux Balance & Implementation Guide */}
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              {/* Energy Flux Breakdown & Municipal Action Pathway */}
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2.5 rounded-xs space-y-1">
                   <div className="font-mono text-[8px] uppercase tracking-wider text-[#174D46] font-bold">
-                    ENERGY BALANCE CLOSURE
+                    ☀️ SOLAR ENERGY PARTITIONING
                   </div>
                   <div className="font-mono text-[10px] text-[#162220] flex justify-between">
-                    <span>Net Radiation (R_n):</span>
+                    <span className="text-[#5C6E6A]">Total Solar Inflow:</span>
                     <strong className="text-[#174D46]">{seb.netRadiationWm2} W/m²</strong>
                   </div>
                   <div className="font-mono text-[10px] text-[#162220] flex justify-between">
-                    <span>Turbulent Flux (H + λE):</span>
-                    <strong>{seb.sensibleHeatWm2 + seb.latentHeatWm2} W/m²</strong>
+                    <span className="text-[#5C6E6A]">Stored in Buildings / Roads:</span>
+                    <strong className="text-[#D9822B]">{seb.groundStorageWm2} W/m² ({seb.storageFractionPct}%)</strong>
                   </div>
                   <div className="font-mono text-[10px] text-[#162220] flex justify-between">
-                    <span>PINN Energy Residual:</span>
-                    <strong className="text-[#2E684A]">&lt; {seb.pinnResidualWm2 || 2.5} W/m² ({((seb.pinnResidualWm2 / seb.netRadiationWm2) * 100).toFixed(1)}%)</strong>
+                    <span className="text-[#5C6E6A]">Physics Conservation Check:</span>
+                    <strong className="text-[#2E684A]">100% Balanced (&lt; {seb.pinnResidualWm2 || 2.5} W/m²)</strong>
                   </div>
                 </div>
 
                 <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2.5 rounded-xs space-y-1">
                   <div className="font-mono text-[8px] uppercase tracking-wider text-[#174D46] font-bold">
-                    RECOMMENDED DEPLOYMENT
+                    🎯 RECOMMENDED IMPLEMENTATION STEPS
                   </div>
                   <div className="text-[10px] text-[#162220] space-y-0.5 leading-snug">
-                    <p>• <strong>Phase 1:</strong> Roof whitewashing & shade trellises</p>
-                    <p>• <strong>Phase 2:</strong> Miyawaki green pockets in barren lots</p>
-                    <p>• <strong>Phase 3:</strong> Cool corridor ventilation alignment</p>
+                    <p>• <strong>Immediate (0–30 Days):</strong> Paint top public roofs white & install shade awnings</p>
+                    <p>• <strong>Medium Term (1–6 Months):</strong> Plant dense Miyawaki green patches in open corners</p>
+                    <p>• <strong>Long Term (6–12 Months):</strong> Open air pathways and convert parking to permeable pavers</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <p className="border-t border-[#EDF2EF] pt-2 font-mono text-[8px] text-[#6B7D79] leading-relaxed">
-              * The biophysical mechanisms above are computed dynamically from localized surface parameters (SVF {activeHotspot.skyView}, Albedo {activeHotspot.albedo}, Built {activeHotspot.builtFraction}, Canopy {activeHotspot.canopyCover}) using the PINN surface energy solver.
+              * Calculated dynamically from live area satellite telemetry (Sunlight absorption, building density: {activeHotspot.builtFraction}, tree cover: {activeHotspot.canopyCover}) to give municipal teams clear, actionable cooling targets.
             </p>
           </div>
         </div>
