@@ -403,16 +403,16 @@ export default function ReportsView({ city, season, selectedHotspotName }: Repor
                 ))}
               </div>
               <div className="grid gap-2 sm:grid-cols-2 text-[10px]">
-                {[
+                {([
                   ["Mapped corridors", inventory.assets.corridors],
                   ["Mapped parks / open space", inventory.assets.parks],
                   ["Mapped water features", inventory.assets.waterBodies],
                   ["Mapped built assets", inventory.assets.buildings],
-                ].map(([label, assets]) => {
+                ] as [string, SpatialAsset[]][]).map(([label, assets]) => {
                   const named = (assets as SpatialAsset[]).filter((asset) => !asset.name.startsWith("Unnamed") && !asset.name.startsWith("Building footprint")).slice(0, 4);
                   return (
                     <div key={String(label)} className="border border-[#E2E8E5] bg-[#FAFBFA] p-2 rounded-xs">
-                      <div className="font-mono text-[8px] uppercase tracking-wide text-[#174D46]">{label}</div>
+                      <div className="font-mono text-[8px] uppercase tracking-wide text-[#174D46]">{String(label)}</div>
                       <div className="mt-1 text-[#162220] leading-relaxed">
                         {named.length ? named.map((asset) => asset.name).join(" · ") : "No named mapped assets returned in this category."}
                       </div>
