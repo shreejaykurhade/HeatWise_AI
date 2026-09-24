@@ -1,0 +1,7 @@
+india_urban_heat_synthetic_dataset/
+india-maps-data-main/
+react-india-region-selector-master/
+scripts/
+ml/__pycache__/
+ml/artifacts/metrics.json
+*.zip

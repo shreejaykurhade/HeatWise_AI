@@ -1,0 +1,489 @@
+{
+  "version": "2.0.0-xgboost",
+  "algorithm": "XGBoost",
+  "trained_at": "2026-08-22T12:20:03.636885+00:00",
+  "dataset": "synthetic_india_urban_heat_v1",
+  "synthetic_data_warning": true,
+  "rows": 500000,
+  "training_rows": 399714,
+  "test_rows": 100286,
+  "holdout_cities": [
+    "Bengaluru",
+    "Delhi",
+    "Mumbai"
+  ],
+  "tuning_cities": [
+    "Chennai",
+    "Pune"
+  ],
+  "regressor_trees": 425,
+  "classifier_trees": 162,
+  "physics_constraints": {
+    "ndvi": -1,
+    "tree_cover_fraction": -1,
+    "green_space_fraction": -1,
+    "impervious_surface_fraction": 1,
+    "building_density": 1,
+    "water_distance_m": 1,
+    "air_temperature_c": 1,
+    "wind_speed_ms": -1,
+    "solar_radiation_wm2": 1,
+    "albedo": -1,
+    "soil_moisture_pct": -1,
+    "surface_material_index": 1
+  },
+  "regression_metrics": {
+    "mae_c": 0.9786,
+    "rmse_c": 1.2252,
+    "r2": 0.97659
+  },
+  "classification_metrics": {
+    "threshold": 0.2,
+    "threshold_objective": "F2 on tuning cities (recall-weighted)",
+    "accuracy": 0.92475,
+    "precision": 0.60315,
+    "recall": 0.72486,
+    "f1": 0.65843,
+    "roc_auc": 0.95158,
+    "pr_auc": 0.73068,
+    "brier": 0.05611,
+    "confusion_matrix": [
+      [
+        85465,
+        4786
+      ],
+      [
+        2761,
+        7274
+      ]
+    ],
+    "report": {
+      "0": {
+        "precision": 0.9687053702990048,
+        "recall": 0.9469701166746075,
+        "f1-score": 0.9577144393955523,
+        "support": 90251.0
+      },
+      "1": {
+        "precision": 0.603150912106136,
+        "recall": 0.7248629795714997,
+        "f1-score": 0.6584295089386739,
+        "support": 10035.0
+      },
+      "accuracy": 0.9247452286460722,
+      "macro avg": {
+        "precision": 0.7859281412025705,
+        "recall": 0.8359165481230536,
+        "f1-score": 0.8080719741671132,
+        "support": 100286.0
+      },
+      "weighted avg": {
+        "precision": 0.9321265957146616,
+        "recall": 0.9247452286460722,
+        "f1-score": 0.9277668467392017,
+        "support": 100286.0
+      }
+    }
+  },
+  "regression_importance": [
+    {
+      "feature": "air_temperature_c",
+      "importance": 33127.679688
+    },
+    {
+      "feature": "dew_point_c",
+      "importance": 8793.292969
+    },
+    {
+      "feature": "impervious_surface_fraction",
+      "importance": 7681.556152
+    },
+    {
+      "feature": "month_sin",
+      "importance": 4387.421387
+    },
+    {
+      "feature": "roof_material_index",
+      "importance": 2230.288086
+    },
+    {
+      "feature": "day_sin",
+      "importance": 1594.542969
+    },
+    {
+      "feature": "month_cos",
+      "importance": 1388.412476
+    },
+    {
+      "feature": "surface_material_index",
+      "importance": 1314.325684
+    },
+    {
+      "feature": "tree_cover_fraction",
+      "importance": 788.307861
+    },
+    {
+      "feature": "building_density",
+      "importance": 764.735107
+    },
+    {
+      "feature": "ndvi",
+      "importance": 527.896118
+    },
+    {
+      "feature": "distance_to_coast_km",
+      "importance": 521.158875
+    },
+    {
+      "feature": "evapotranspiration_mm",
+      "importance": 519.939026
+    },
+    {
+      "feature": "is_monsoon",
+      "importance": 173.651031
+    },
+    {
+      "feature": "water_distance_m",
+      "importance": 167.303268
+    }
+  ],
+  "classification_importance": [
+    {
+      "feature": "day_sin",
+      "importance": 3511.794189
+    },
+    {
+      "feature": "is_monsoon",
+      "importance": 3241.784424
+    },
+    {
+      "feature": "month_sin",
+      "importance": 2283.35376
+    },
+    {
+      "feature": "predicted_lst_c",
+      "importance": 1461.061401
+    },
+    {
+      "feature": "month_cos",
+      "importance": 767.697876
+    },
+    {
+      "feature": "impervious_surface_fraction",
+      "importance": 641.227356
+    },
+    {
+      "feature": "air_temperature_c",
+      "importance": 627.578979
+    },
+    {
+      "feature": "elevation_m",
+      "importance": 597.376099
+    },
+    {
+      "feature": "distance_to_coast_km",
+      "importance": 307.241425
+    },
+    {
+      "feature": "pm25_ug_m3",
+      "importance": 277.33078
+    },
+    {
+      "feature": "surface_pressure_hpa",
+      "importance": 182.062881
+    },
+    {
+      "feature": "surface_material_index",
+      "importance": 143.395493
+    },
+    {
+      "feature": "dew_point_c",
+      "importance": 129.217377
+    },
+    {
+      "feature": "roof_material_index",
+      "importance": 116.002869
+    },
+    {
+      "feature": "latitude",
+      "importance": 97.10537
+    }
+  ],
+  "feature_profile": {
+    "latitude": {
+      "median": 22.572,
+      "min": 12.867,
+      "max": 30.838
+    },
+    "longitude": {
+      "median": 77.104,
+      "min": 72.467,
+      "max": 88.468
+    },
+    "elevation_m": {
+      "median": 304.4695,
+      "min": 0.0,
+      "max": 953.198014
+    },
+    "distance_to_coast_km": {
+      "median": 500.0,
+      "min": 2.0,
+      "max": 900.0
+    },
+    "ndvi": {
+      "median": 0.26,
+      "min": -0.004,
+      "max": 0.581
+    },
+    "ndbi": {
+      "median": 0.266,
+      "min": -0.065,
+      "max": 0.515
+    },
+    "ndwi": {
+      "median": -0.154,
+      "min": -0.331,
+      "max": 0.547
+    },
+    "ndmi": {
+      "median": 0.052,
+      "min": -0.191,
+      "max": 0.332
+    },
+    "savi": {
+      "median": 0.222,
+      "min": -0.026,
+      "max": 0.51
+    },
+    "evi": {
+      "median": 0.196,
+      "min": -0.029,
+      "max": 0.455
+    },
+    "satellite_albedo": {
+      "median": 0.194,
+      "min": 0.053,
+      "max": 0.298
+    },
+    "tree_cover_fraction": {
+      "median": 0.25,
+      "min": 0.0,
+      "max": 0.602
+    },
+    "impervious_surface_fraction": {
+      "median": 0.617,
+      "min": 0.143,
+      "max": 0.921
+    },
+    "building_density": {
+      "median": 0.605,
+      "min": 0.09,
+      "max": 0.934
+    },
+    "building_height_m": {
+      "median": 58.687,
+      "min": 15.203,
+      "max": 94.060025
+    },
+    "building_height_std_m": {
+      "median": 8.747,
+      "min": 1.0,
+      "max": 17.092
+    },
+    "road_density_km_km2": {
+      "median": 11.301,
+      "min": 3.947998,
+      "max": 16.460001
+    },
+    "road_width_avg_m": {
+      "median": 13.385,
+      "min": 5.444999,
+      "max": 20.470001
+    },
+    "population_density_per_km2": {
+      "median": 12701.234,
+      "min": 2517.593988,
+      "max": 45000.0
+    },
+    "sky_view_factor": {
+      "median": 0.528,
+      "min": 0.226,
+      "max": 0.917
+    },
+    "urban_canyon_ratio": {
+      "median": 3.192,
+      "min": 0.720999,
+      "max": 6.038001
+    },
+    "floor_area_ratio": {
+      "median": 3.17,
+      "min": 0.61,
+      "max": 5.141
+    },
+    "green_space_fraction": {
+      "median": 0.151,
+      "min": 0.0,
+      "max": 0.413
+    },
+    "park_distance_m": {
+      "median": 2568.439,
+      "min": 1784.169817,
+      "max": 4416.222146
+    },
+    "tree_species_diversity_index": {
+      "median": 0.227,
+      "min": 0.05,
+      "max": 0.67
+    },
+    "canopy_height_m": {
+      "median": 7.537,
+      "min": 1.0,
+      "max": 15.377001
+    },
+    "water_distance_m": {
+      "median": 20165.89,
+      "min": 10.0,
+      "max": 25000.0
+    },
+    "green_distance_m": {
+      "median": 1862.431,
+      "min": 1052.117848,
+      "max": 3452.73639
+    },
+    "air_temperature_c": {
+      "median": 26.286,
+      "min": 5.0,
+      "max": 42.878004
+    },
+    "dew_point_c": {
+      "median": 19.777,
+      "min": -5.0,
+      "max": 32.0
+    },
+    "relative_humidity_pct": {
+      "median": 60.055,
+      "min": 21.780998,
+      "max": 98.0
+    },
+    "wind_speed_ms": {
+      "median": 2.95,
+      "min": 1.65,
+      "max": 9.146009
+    },
+    "rainfall_mm": {
+      "median": 2.096,
+      "min": 0.0,
+      "max": 95.653035
+    },
+    "solar_radiation_wm2": {
+      "median": 590.679,
+      "min": 286.897994,
+      "max": 858.114045
+    },
+    "surface_pressure_hpa": {
+      "median": 977.566,
+      "min": 894.990996,
+      "max": 1020.0
+    },
+    "cloud_cover_pct": {
+      "median": 35.369,
+      "min": 0.0,
+      "max": 100.0
+    },
+    "evapotranspiration_mm": {
+      "median": 1.745,
+      "min": 0.1,
+      "max": 5.210001
+    },
+    "albedo": {
+      "median": 0.193,
+      "min": 0.049,
+      "max": 0.303
+    },
+    "soil_moisture_pct": {
+      "median": 6.438,
+      "min": 1.0,
+      "max": 55.0
+    },
+    "surface_emissivity": {
+      "median": 0.944,
+      "min": 0.906,
+      "max": 0.987
+    },
+    "surface_material_index": {
+      "median": 6.138,
+      "min": 1.121999,
+      "max": 9.663
+    },
+    "roof_material_index": {
+      "median": 5.544,
+      "min": 0.0,
+      "max": 9.171
+    },
+    "pavement_type_index": {
+      "median": 4.483,
+      "min": 1.077,
+      "max": 7.164
+    },
+    "pm25_ug_m3": {
+      "median": 64.174,
+      "min": 5.732998,
+      "max": 189.559001
+    },
+    "pm10_ug_m3": {
+      "median": 109.176,
+      "min": 5.0,
+      "max": 325.496003
+    },
+    "no2_ug_m3": {
+      "median": 39.924,
+      "min": 9.894998,
+      "max": 75.557011
+    },
+    "so2_ug_m3": {
+      "median": 11.559,
+      "min": 1.0,
+      "max": 39.207001
+    },
+    "co_ppm": {
+      "median": 1.36,
+      "min": 0.483,
+      "max": 2.12
+    },
+    "o3_ug_m3": {
+      "median": 53.5875,
+      "min": 26.741999,
+      "max": 80.107006
+    },
+    "aerosol_optical_depth": {
+      "median": 0.367,
+      "min": 0.102,
+      "max": 0.816001
+    },
+    "aerosol_index": {
+      "median": 0.931,
+      "min": 0.0,
+      "max": 2.22
+    },
+    "traffic_index": {
+      "median": 53.434,
+      "min": 17.640992,
+      "max": 82.831
+    },
+    "industrial_proximity_index": {
+      "median": 32.588,
+      "min": 0.0,
+      "max": 100.0
+    },
+    "is_monsoon": {
+      "median": 0.0,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "is_weekend": {
+      "median": 0.0,
+      "min": 0.0,
+      "max": 1.0
+    }
+  }
+}
