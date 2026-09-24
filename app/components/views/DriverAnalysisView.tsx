@@ -437,97 +437,66 @@ export default function DriverAnalysisView({
             </table>
           </div>
 
-          <div className="border border-[#0B1C1A] bg-[#0B1C1A] text-white p-3.5 shadow-xs rounded-xs">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="font-mono text-[8.5px] uppercase tracking-wider text-[#8BA8A0] font-bold">MODEL PERFORMANCE</div>
-              <div className="flex items-center gap-3 font-mono text-[8px]"><span><i className="inline-block h-2 w-2 bg-[#55A993] mr-1" />XGBOOST</span><span><i className="inline-block h-2 w-2 bg-[#EFD17B] mr-1" />PINN</span></div>
-            </div>
+          <div className="border border-[#0B1C1A] bg-[#0B1C1A] text-white p-4 shadow-xs rounded-xs flex-1 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="font-mono text-[8.5px] uppercase tracking-wider text-[#8BA8A0] font-bold">MODEL PERFORMANCE</div>
+                <div className="flex items-center gap-3 font-mono text-[8px]"><span><i className="inline-block h-2 w-2 bg-[#55A993] mr-1" />XGBOOST</span><span><i className="inline-block h-2 w-2 bg-[#EFD17B] mr-1" />PINN</span></div>
+              </div>
 
-            <div className="space-y-3">
-              {[
-                { label: "LST MAE · LOWER IS BETTER", xgb: modelPrediction?.validation.temperatureMaeC ?? 0.9786, pinn: pinnPrediction?.validation.temperatureMaeC ?? 1.09, max: 1.5, unit: "°C" },
-                { label: "LST RMSE · LOWER IS BETTER", xgb: modelPrediction?.validation.temperatureRmseC ?? 1.2252, pinn: pinnPrediction?.validation.temperatureRmseC ?? 1.3715, max: 1.5, unit: "°C" },
-                { label: "LST R² · HIGHER IS BETTER", xgb: modelPrediction?.validation.temperatureR2 ?? 0.97659, pinn: pinnPrediction?.validation.temperatureR2 ?? 0.9716, max: 1, unit: "" },
-              ].map((metric) => (
-                <div key={metric.label}>
-                  <div className="mb-1 font-mono text-[8px] text-[#B6CBC5]">{metric.label}</div>
-                  <div className="grid grid-cols-[58px_1fr_42px] items-center gap-2 font-mono text-[8px]">
-                    <span>XGBoost</span><div className="h-2 bg-white/10"><div className="h-full bg-[#55A993]" style={{ width: `${Math.min(100, (metric.xgb / metric.max) * 100)}%` }} /></div><strong className="text-right">{metric.xgb.toFixed(metric.unit ? 2 : 3)}{metric.unit}</strong>
-                    <span>PINN</span><div className="h-2 bg-white/10"><div className="h-full bg-[#EFD17B]" style={{ width: `${Math.min(100, (metric.pinn / metric.max) * 100)}%` }} /></div><strong className="text-right text-[#EFD17B]">{metric.pinn.toFixed(metric.unit ? 2 : 3)}{metric.unit}</strong>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 border-t border-white/15 pt-3">
-              <div className="mb-2 font-mono text-[8px] text-[#B6CBC5]">XGBOOST HOTSPOT CLASSIFIER</div>
-              <div className="space-y-1.5">
+              <div className="space-y-3">
                 {[
-                  ["Accuracy", modelPrediction?.validation.hotspotAccuracy ?? 0.93072],
-                  ["Precision", modelPrediction?.validation.hotspotPrecision ?? 0.79953],
-                  ["Recall", modelPrediction?.validation.hotspotRecall ?? 0.41056],
-                  ["F1", modelPrediction?.validation.hotspotF1 ?? 0.54253],
-                  ["ROC-AUC", modelPrediction?.validation.hotspotRocAuc ?? 0.95158],
-                  ["PR-AUC", modelPrediction?.validation.hotspotPrAuc ?? 0.73068],
-                ].map(([label, rawValue]) => {
-                  const value = Number(rawValue);
-                  return <div key={String(label)} className="grid grid-cols-[58px_1fr_36px] items-center gap-2 font-mono text-[8px]"><span>{label}</span><div className="h-2 bg-white/10"><div className="h-full bg-[#55A993]" style={{ width: `${value * 100}%` }} /></div><strong className="text-right">{(value * 100).toFixed(1)}%</strong></div>;
-                })}
+                  { label: "LST MAE · LOWER IS BETTER", xgb: modelPrediction?.validation.temperatureMaeC ?? 0.9786, pinn: pinnPrediction?.validation.temperatureMaeC ?? 1.09, max: 1.5, unit: "°C" },
+                  { label: "LST RMSE · LOWER IS BETTER", xgb: modelPrediction?.validation.temperatureRmseC ?? 1.2252, pinn: pinnPrediction?.validation.temperatureRmseC ?? 1.3715, max: 1.5, unit: "°C" },
+                  { label: "LST R² · HIGHER IS BETTER", xgb: modelPrediction?.validation.temperatureR2 ?? 0.97659, pinn: pinnPrediction?.validation.temperatureR2 ?? 0.9716, max: 1, unit: "" },
+                ].map((metric) => (
+                  <div key={metric.label}>
+                    <div className="mb-1 font-mono text-[8px] text-[#B6CBC5]">{metric.label}</div>
+                    <div className="grid grid-cols-[58px_1fr_42px] items-center gap-2 font-mono text-[8px]">
+                      <span>XGBoost</span><div className="h-2 bg-white/10"><div className="h-full bg-[#55A993]" style={{ width: `${Math.min(100, (metric.xgb / metric.max) * 100)}%` }} /></div><strong className="text-right">{metric.xgb.toFixed(metric.unit ? 2 : 3)}{metric.unit}</strong>
+                      <span>PINN</span><div className="h-2 bg-white/10"><div className="h-full bg-[#EFD17B]" style={{ width: `${Math.min(100, (metric.pinn / metric.max) * 100)}%` }} /></div><strong className="text-right text-[#EFD17B]">{metric.pinn.toFixed(metric.unit ? 2 : 3)}{metric.unit}</strong>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="mt-2 flex flex-wrap justify-between gap-1 font-mono text-[8px] text-[#A0BCB6]"><span>High-confidence threshold: {((modelPrediction?.validation.decisionThreshold ?? 0.9525) * 100).toFixed(1)}%</span><span>Brier: {(modelPrediction?.validation.hotspotBrier ?? 0.05611).toFixed(3)} ↓ · Held-out: 100,286</span></div>
-            </div>
 
-            <div className="mt-4 border-t border-white/15 pt-3">
-              <div className="mb-2 flex items-center justify-between font-mono text-[8px] text-[#B6CBC5]"><span>CONFUSION MATRIX · HELD-OUT CITIES</span><span>ACTUAL × PREDICTED</span></div>
-              <div className="grid grid-cols-[72px_1fr_1fr] gap-1 font-mono text-[8px]">
-                <div />
-                <div className="pb-1 text-center text-[#A0BCB6]">PRED. NORMAL</div>
-                <div className="pb-1 text-center text-[#A0BCB6]">PRED. HOTSPOT</div>
-                <div className="flex items-center text-[#A0BCB6]">ACTUAL NORMAL</div>
-                <div className="border border-[#55A993]/50 bg-[#174D46] p-2 text-center"><strong className="block text-sm text-white">{trueNegative.toLocaleString("en-IN")}</strong><span className="text-[#A0BCB6]">TRUE NEGATIVE</span></div>
-                <div className="border border-[#DFA449]/40 bg-[#5B431D] p-2 text-center"><strong className="block text-sm text-[#FFE1A4]">{falsePositive.toLocaleString("en-IN")}</strong><span className="text-[#E8C98B]">FALSE POSITIVE</span></div>
-                <div className="flex items-center text-[#A0BCB6]">ACTUAL HOTSPOT</div>
-                <div className="border border-[#D86A5A]/45 bg-[#5A2823] p-2 text-center"><strong className="block text-sm text-[#FFB5AA]">{falseNegative.toLocaleString("en-IN")}</strong><span className="text-[#E9A097]">FALSE NEGATIVE</span></div>
-                <div className="border border-[#55A993]/50 bg-[#174D46] p-2 text-center"><strong className="block text-sm text-white">{truePositive.toLocaleString("en-IN")}</strong><span className="text-[#A0BCB6]">TRUE POSITIVE</span></div>
+              <div className="mt-4 border-t border-white/15 pt-3">
+                <div className="mb-2 font-mono text-[8px] text-[#B6CBC5]">XGBOOST HOTSPOT CLASSIFIER</div>
+                <div className="space-y-1.5">
+                  {[
+                    ["Accuracy", modelPrediction?.validation.hotspotAccuracy ?? 0.93072],
+                    ["Precision", modelPrediction?.validation.hotspotPrecision ?? 0.79953],
+                    ["Recall", modelPrediction?.validation.hotspotRecall ?? 0.41056],
+                    ["F1", modelPrediction?.validation.hotspotF1 ?? 0.54253],
+                    ["ROC-AUC", modelPrediction?.validation.hotspotRocAuc ?? 0.95158],
+                    ["PR-AUC", modelPrediction?.validation.hotspotPrAuc ?? 0.73068],
+                  ].map(([label, rawValue]) => {
+                    const value = Number(rawValue);
+                    return <div key={String(label)} className="grid grid-cols-[58px_1fr_36px] items-center gap-2 font-mono text-[8px]"><span>{label}</span><div className="h-2 bg-white/10"><div className="h-full bg-[#55A993]" style={{ width: `${value * 100}%` }} /></div><strong className="text-right">{(value * 100).toFixed(1)}%</strong></div>;
+                  })}
+                </div>
+                <div className="mt-2 flex flex-wrap justify-between gap-1 font-mono text-[8px] text-[#A0BCB6]"><span>High-confidence threshold: {((modelPrediction?.validation.decisionThreshold ?? 0.9525) * 100).toFixed(1)}%</span><span>Brier: {(modelPrediction?.validation.hotspotBrier ?? 0.05611).toFixed(3)} ↓ · Held-out: 100,286</span></div>
               </div>
-              <p className="mt-2 font-mono text-[8px] leading-relaxed text-[#A0BCB6]">Correct: {(trueNegative + truePositive).toLocaleString("en-IN")} · Incorrect: {(falsePositive + falseNegative).toLocaleString("en-IN")}</p>
-            </div>
-          </div>
 
-          {/* Card 3: Model Telemetry & Deployment Specs (Fills bottom gap cleanly) */}
-          <div className="border border-[#DCE7E3] bg-white p-3.5 shadow-xs rounded-xs font-mono text-[9px] space-y-2">
-            <div className="flex items-center justify-between border-b border-[#EDF2EF] pb-1.5">
-              <span className="text-[8.5px] uppercase tracking-wider text-[#174D46] font-bold flex items-center gap-1">
-                <span>⚡</span> INFERENCE TELEMETRY & PIPELINE SPECS
-              </span>
-              <span className="text-[8px] bg-[#174D46]/10 text-[#174D46] px-1.5 py-0.5 rounded-2xs font-bold">
-                CLIENT WASM
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-[#162220]">
-              <div className="border border-[#EDF2EF] bg-[#FAFBFA] p-2 rounded-xs">
-                <span className="text-[7.5px] text-[#6B7D79] uppercase block font-bold">Inference Latency</span>
-                <strong className="text-xs text-[#2E684A]">&lt; 8 ms (Zero-Cloud Lag)</strong>
-              </div>
-              <div className="border border-[#EDF2EF] bg-[#FAFBFA] p-2 rounded-xs">
-                <span className="text-[7.5px] text-[#6B7D79] uppercase block font-bold">Training Dataset</span>
-                <strong className="text-xs text-[#162220]">1,000,000 Samples (10 Metros)</strong>
-              </div>
-              <div className="border border-[#EDF2EF] bg-[#FAFBFA] p-2 rounded-xs">
-                <span className="text-[7.5px] text-[#6B7D79] uppercase block font-bold">Physics Anchor</span>
-                <strong className="text-[10px] text-[#162220]">Stefan-Boltzmann + SEB</strong>
-              </div>
-              <div className="border border-[#EDF2EF] bg-[#FAFBFA] p-2 rounded-xs">
-                <span className="text-[7.5px] text-[#6B7D79] uppercase block font-bold">Model Engine</span>
-                <strong className="text-[10px] text-[#174D46]">XGBoost v2.1 + PINN v1.4</strong>
+              <div className="mt-4 border-t border-white/15 pt-3">
+                <div className="mb-2 flex items-center justify-between font-mono text-[8px] text-[#B6CBC5]"><span>CONFUSION MATRIX · HELD-OUT CITIES</span><span>ACTUAL × PREDICTED</span></div>
+                <div className="grid grid-cols-[72px_1fr_1fr] gap-1 font-mono text-[8px]">
+                  <div />
+                  <div className="pb-1 text-center text-[#A0BCB6]">PRED. NORMAL</div>
+                  <div className="pb-1 text-center text-[#A0BCB6]">PRED. HOTSPOT</div>
+                  <div className="flex items-center text-[#A0BCB6]">ACTUAL NORMAL</div>
+                  <div className="border border-[#55A993]/50 bg-[#174D46] p-2 text-center"><strong className="block text-sm text-white">{trueNegative.toLocaleString("en-IN")}</strong><span className="text-[#A0BCB6]">TRUE NEGATIVE</span></div>
+                  <div className="border border-[#DFA449]/40 bg-[#5B431D] p-2 text-center"><strong className="block text-sm text-[#FFE1A4]">{falsePositive.toLocaleString("en-IN")}</strong><span className="text-[#E8C98B]">FALSE POSITIVE</span></div>
+                  <div className="flex items-center text-[#A0BCB6]">ACTUAL HOTSPOT</div>
+                  <div className="border border-[#D86A5A]/45 bg-[#5A2823] p-2 text-center"><strong className="block text-sm text-[#FFB5AA]">{falseNegative.toLocaleString("en-IN")}</strong><span className="text-[#E9A097]">FALSE NEGATIVE</span></div>
+                  <div className="border border-[#55A993]/50 bg-[#174D46] p-2 text-center"><strong className="block text-sm text-white">{truePositive.toLocaleString("en-IN")}</strong><span className="text-[#A0BCB6]">TRUE POSITIVE</span></div>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-[8px] text-[#7A8C88] pt-1 border-t border-[#EDF2EF]">
-              <span>• Cross-validation: 5-Fold Stratified Hold-out</span>
-              <span className="text-[#2E684A] font-bold">✓ Operational Ready</span>
-            </div>
+            <p className="mt-3 pt-2 border-t border-white/10 font-mono text-[8px] leading-relaxed text-[#A0BCB6]">
+              Correct: {(trueNegative + truePositive).toLocaleString("en-IN")} · Incorrect: {(falsePositive + falseNegative).toLocaleString("en-IN")} · Validation based on 100,286 spatial test pixels across Indian climate zones.
+            </p>
           </div>
         </div>
       </div>
