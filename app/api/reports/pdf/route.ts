@@ -201,7 +201,7 @@ export async function GET(request: Request) {
         const ab = await res.arrayBuffer();
         if (ab.byteLength > 0) return new Uint8Array(ab);
       }
-    } catch {}
+    } catch { }
 
     // 2. Fallback to direct FS read
     const candidates = [
@@ -214,7 +214,7 @@ export async function GET(request: Request) {
       try {
         const data = readFileSync(decodeURIComponent(p));
         if (data && data.length > 0) return new Uint8Array(data);
-      } catch {}
+      } catch { }
     }
     return null;
   };
@@ -258,21 +258,21 @@ export async function GET(request: Request) {
   }
 
   /* Palette */
-  const navy     = rgb(0.04, 0.14, 0.24);
-  const forest   = rgb(0.09, 0.30, 0.27);
-  const red      = rgb(0.76, 0.22, 0.16);
-  const amber    = rgb(0.82, 0.50, 0.16);
-  const green    = rgb(0.22, 0.48, 0.34);
-  const dark     = rgb(0.12, 0.16, 0.15);
-  const muted    = rgb(0.40, 0.46, 0.44);
-  const lightBg  = rgb(0.97, 0.975, 0.97);
-  const bdrGrey  = rgb(0.86, 0.89, 0.87);
-  const alertBg  = rgb(0.99, 0.96, 0.95);
+  const navy = rgb(0.04, 0.14, 0.24);
+  const forest = rgb(0.09, 0.30, 0.27);
+  const red = rgb(0.76, 0.22, 0.16);
+  const amber = rgb(0.82, 0.50, 0.16);
+  const green = rgb(0.22, 0.48, 0.34);
+  const dark = rgb(0.12, 0.16, 0.15);
+  const muted = rgb(0.40, 0.46, 0.44);
+  const lightBg = rgb(0.97, 0.975, 0.97);
+  const bdrGrey = rgb(0.86, 0.89, 0.87);
+  const alertBg = rgb(0.99, 0.96, 0.95);
   const alertBdr = rgb(0.93, 0.82, 0.80);
-  const okBg     = rgb(0.94, 0.97, 0.95);
-  const okBdr    = rgb(0.72, 0.86, 0.77);
-  const gold     = rgb(0.85, 0.68, 0.28);
-  const white    = rgb(1, 1, 1);
+  const okBg = rgb(0.94, 0.97, 0.95);
+  const okBdr = rgb(0.72, 0.86, 0.77);
+  const gold = rgb(0.85, 0.68, 0.28);
+  const white = rgb(1, 1, 1);
 
   const PW = 595.28;
   const PH = 841.89;

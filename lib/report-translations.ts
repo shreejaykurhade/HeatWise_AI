@@ -419,7 +419,7 @@ const MR: ReportTranslations = {
 const TE: ReportTranslations = {
   reportTitle: "మున్సిపల్ పట్టణ ఉష్ణ మూల్యాంకన & ఉపశమన నివేదిక",
   reportSubtitle: "పట్టణ వాతావరణ స్థితిస్థాపకత | భౌతిక-మార్గదర్శిత | ఉపగ్రహ ఉష్ణ మేధస్సు",
-  stateLabel: "రాష్ట్రం / కేంద్ర పాలిత:",
+  stateLabel: "రాష్ట్రం:",
   cityLabel: "నగరం:",
   municipalAuthLabel: "మున్సిపల్ అధికారం:",
   hotspotLabel: "హాట్‌స్పాట్:",
