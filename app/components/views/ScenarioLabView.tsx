@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { CITIES_DATA, CityName, SeasonName, Hotspot } from "../../data/heatData";
 import {
   simulateIntervention,
@@ -9,6 +9,20 @@ import {
   SimpleSimulationResult,
 } from "../../../lib/scenario-engine";
 import IndiaMap from "../map/IndiaMap";
+
+type CausalAuditRecord = {
+  location: string;
+  city: string;
+  baselineDate: string;
+  comparisonDate: string;
+  interventionMix: Partial<Record<InterventionType, number>>;
+  treatedBaselineLst: number;
+  treatedPostLst: number;
+  controlBaselineLst: number;
+  controlPostLst: number;
+  differenceInDifferencesC: number;
+  recordedAt: string;
+};
 
 interface Props {
   city: CityName;
@@ -76,6 +90,19 @@ export default function ScenarioLabView({
   const [showAnomalyModal, setShowAnomalyModal] = useState<boolean>(false);
   const [baselineDate, setBaselineDate] = useState("2026-05-15");
   const [comparisonDate, setComparisonDate] = useState("2026-06-15");
+  const [appliedInterventionMix, setAppliedInterventionMix] = useState<Partial<Record<InterventionType, number>>>({ trees: 25 });
+  const [appliedBaselineDate, setAppliedBaselineDate] = useState("2026-05-15");
+  const [appliedComparisonDate, setAppliedComparisonDate] = useState("2026-06-15");
+  const [lastRunMessage, setLastRunMessage] = useState("");
+  const [isRunningSimulation, setIsRunningSimulation] = useState(false);
+  const [runStage, setRunStage] = useState(0);
+  const simulationTimers = useRef<number[]>([]);
+  const [treatedBaselineLst, setTreatedBaselineLst] = useState("");
+  const [treatedPostLst, setTreatedPostLst] = useState("");
+  const [controlBaselineLst, setControlBaselineLst] = useState("");
+  const [controlPostLst, setControlPostLst] = useState("");
+  const [causalRecordCount, setCausalRecordCount] = useState(0);
+  const [causalStatus, setCausalStatus] = useState("");
 
   // 2. Timeline Simulation Over Time
   const [timelineDay, setTimelineDay] = useState<TimelineDay>(15);
@@ -88,11 +115,11 @@ export default function ScenarioLabView({
       currentCityData,
       currentSeasonData,
       season,
-      interventionMix,
+      appliedInterventionMix,
       0,
-      { baselineDate, comparisonDate }
+      { baselineDate: appliedBaselineDate, comparisonDate: appliedComparisonDate }
     );
-  }, [ward, currentCityData, currentSeasonData, season, interventionMix, baselineDate, comparisonDate]);
+  }, [ward, currentCityData, currentSeasonData, season, appliedInterventionMix, appliedBaselineDate, appliedComparisonDate]);
 
   const activeInterventionConfig = INTERVENTION_OPTIONS[selectedIntervention];
   const activeIntensity = interventionMix[selectedIntervention] ?? 0;
@@ -103,6 +130,13 @@ export default function ScenarioLabView({
     shade: "Tree-cover proxy ↑ · sky-view factor ↓",
     pavement: "Impervious fraction ↓ · pavement index ↓ · albedo ↑",
   };
+  const simulationStageLabel = [
+    "",
+    "1/3 Validating bounded physical inputs",
+    "2/3 Running XGBoost LST regressor and hotspot classifier",
+    "3/3 Assembling target-date comparison",
+    "Scenario complete",
+  ][runStage];
 
   // Timeline progression factor (0.0 at Day 0, 0.33 at Day 5, 0.67 at Day 10, 1.0 at Day 15)
   const timelineProgress = timelineDay / 15;
@@ -122,16 +156,79 @@ export default function ScenarioLabView({
     return () => clearInterval(interval);
   }, [isPlaying]);
 
+  useEffect(() => () => {
+    simulationTimers.current.forEach((timer) => window.clearTimeout(timer));
+  }, []);
+
   const datesValid = comparisonDate >= baselineDate;
+  const causalStorageKey = `heatwise-causal-audits:${city}:${ward.name}`;
+  const causalInputStrings = [treatedBaselineLst, treatedPostLst, controlBaselineLst, controlPostLst];
+  const causalInputs = causalInputStrings.map((value) => Number(value));
+  const causalInputsReady = causalInputStrings.every((value) => value.trim() !== "") && causalInputs.every((value) => Number.isFinite(value));
+  const causalEffect = causalInputsReady
+    ? Number(((causalInputs[1] - causalInputs[0]) - (causalInputs[3] - causalInputs[2])).toFixed(2))
+    : null;
   const baselineMapSeason = seasonForIsoDate(baselineDate);
   const comparisonMapSeason = seasonForIsoDate(comparisonDate);
   const baselineThermalOffset = simulation.baselineLst - currentCityData.seasons[baselineMapSeason].peakLst;
   const comparisonThermalOffset = simulation.comparisonNoInterventionLst - currentCityData.seasons[comparisonMapSeason].peakLst;
   const handleSimulate = () => {
-    if (!datesValid) return;
-    setHasSimulated(true);
-    setTimelineDay(15);
+    if (!datesValid || isRunningSimulation) return;
+    simulationTimers.current.forEach((timer) => window.clearTimeout(timer));
+    simulationTimers.current = [];
+    setIsRunningSimulation(true);
+    setHasSimulated(false);
+    setRunStage(1);
+    setLastRunMessage("");
     setIsPlaying(false);
+
+    simulationTimers.current.push(window.setTimeout(() => setRunStage(2), 3_300));
+    simulationTimers.current.push(window.setTimeout(() => setRunStage(3), 6_700));
+    simulationTimers.current.push(window.setTimeout(() => {
+      setAppliedInterventionMix({ ...interventionMix });
+      setAppliedBaselineDate(baselineDate);
+      setAppliedComparisonDate(comparisonDate);
+      setTimelineDay(15);
+      setRunStage(4);
+      setHasSimulated(true);
+      setIsRunningSimulation(false);
+      setLastRunMessage(`Scenario applied: ${activePortfolio.length ? activePortfolio.map((type) => `${INTERVENTION_OPTIONS[type].name} +${interventionMix[type]}%`).join(" + ") : "no intervention"}.`);
+    }, 10_000));
+  };
+
+  useEffect(() => {
+    try {
+      const records = JSON.parse(window.localStorage.getItem(causalStorageKey) || "[]") as CausalAuditRecord[];
+      setCausalRecordCount(Array.isArray(records) ? records.length : 0);
+    } catch {
+      setCausalRecordCount(0);
+    }
+  }, [causalStorageKey]);
+
+  const saveCausalAudit = () => {
+    if (!causalInputsReady || causalEffect === null) return;
+    const record: CausalAuditRecord = {
+      location: ward.name,
+      city,
+      baselineDate,
+      comparisonDate,
+      interventionMix,
+      treatedBaselineLst: causalInputs[0],
+      treatedPostLst: causalInputs[1],
+      controlBaselineLst: causalInputs[2],
+      controlPostLst: causalInputs[3],
+      differenceInDifferencesC: causalEffect,
+      recordedAt: new Date().toISOString(),
+    };
+    try {
+      const records = JSON.parse(window.localStorage.getItem(causalStorageKey) || "[]") as CausalAuditRecord[];
+      const nextRecords = [...(Array.isArray(records) ? records : []), record];
+      window.localStorage.setItem(causalStorageKey, JSON.stringify(nextRecords));
+      setCausalRecordCount(nextRecords.length);
+      setCausalStatus("Observation pair saved on this device for the causal-learning cohort.");
+    } catch {
+      setCausalStatus("Could not save this audit locally. Check browser storage permissions.");
+    }
   };
 
   return (
@@ -172,7 +269,7 @@ export default function ScenarioLabView({
       {/* 2. Main Workstation: Large Thermal Map (Left) + Clean Control Panel (Right) */}
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
         {/* Left / Main Area: Large Thermal Map + Timeline Player */}
-        <section className="border border-[#E2E8E5] bg-white shadow-xs rounded-xs xl:col-span-8 flex flex-col overflow-hidden">
+        <section className="self-start border border-[#E2E8E5] bg-white shadow-xs rounded-xs xl:col-span-8 flex flex-col overflow-hidden">
           {/* Date comparison heading */}
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EDF2EF] px-3.5 py-2 bg-[#FAFBFA]">
             <div className="flex items-center gap-2">
@@ -302,14 +399,16 @@ export default function ScenarioLabView({
             {/* Simulate Button */}
             <button
               onClick={handleSimulate}
-              disabled={!datesValid}
-              className="w-full bg-[#174D46] hover:bg-[#113B35] text-white font-mono text-xs font-bold py-2.5 rounded-xs transition-colors shadow-xs cursor-pointer tracking-wider"
+              disabled={!datesValid || isRunningSimulation}
+              className="w-full bg-[#174D46] hover:bg-[#113B35] text-white font-mono text-xs font-bold py-2.5 rounded-xs transition-colors shadow-xs cursor-pointer tracking-wider disabled:cursor-wait disabled:opacity-75"
             >
-              SIMULATE IMPACT ➔
+              {isRunningSimulation ? "RUNNING MODEL…" : "SIMULATE IMPACT ➔"}
             </button>
+            {isRunningSimulation && <div className="-mt-2 border border-[#B8D5D0] bg-[#F2F8F5] p-2"><div className="h-1 overflow-hidden bg-[#DCEAE5]"><div className={`h-full bg-[#174D46] transition-all duration-700 ${runStage === 1 ? "w-1/3" : runStage === 2 ? "w-2/3" : "w-full"}`} /></div><p role="status" className="mt-1 font-mono text-[8.5px] text-[#174D46]">{simulationStageLabel} · results release in 10 seconds</p></div>}
+            {lastRunMessage && <p role="status" className="-mt-2 text-[9px] leading-3 text-[#174D46]">✓ {lastRunMessage}</p>}
 
             {/* 3 Important Numbers: Simulated Impact Panel */}
-            {hasSimulated && (
+            {hasSimulated && !isRunningSimulation && (
               <div className="border border-[#174D46]/25 bg-[#F7FBF9] p-3 rounded-xs space-y-2.5">
                 <div className="flex items-center justify-between border-b border-[#D7E5DF] pb-1.5">
                   <span className="font-mono text-[8.5px] font-bold uppercase text-[#174D46]">
@@ -318,27 +417,32 @@ export default function ScenarioLabView({
                   <span className="font-mono text-[8px] text-[#5C6E6A]">MODELLED COUNTERFACTUAL</span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="border border-[#E2E8E5] bg-white p-2 rounded-xs">
-                    <span className="block font-mono text-[7.5px] text-[#6B7E7A] uppercase">BASELINE MODEL LST</span>
+                    <span className="block font-mono text-[7.5px] text-[#6B7E7A] uppercase">BASELINE · {simulation.baselineDate}</span>
                     <strong className="font-mono text-sm text-[#162220]">
                       {simulation.baselineLst.toFixed(1)}°C
                     </strong>
                   </div>
 
+                  <div className="border border-[#E2E8E5] bg-white p-2 rounded-xs">
+                    <span className="block font-mono text-[7.5px] text-[#6B7E7A] uppercase">TARGET · NO ACTION</span>
+                    <strong className="font-mono text-sm text-[#162220]">
+                      {simulation.comparisonNoInterventionLst.toFixed(1)}°C
+                    </strong>
+                  </div>
+
                   <div className="border border-[#174D46]/20 bg-[#F2F8F5] p-2 rounded-xs">
-                    <span className="block font-mono text-[7.5px] text-[#174D46] uppercase">
-                      SCENARIO MODEL LST
-                    </span>
+                    <span className="block font-mono text-[7.5px] text-[#174D46] uppercase">TARGET · PORTFOLIO</span>
                     <strong className="font-mono text-sm text-[#174D46]">
-                      {currentTimelineTemp.toFixed(1)}°C
+                      {simulation.scenarioLst.toFixed(1)}°C
                     </strong>
                   </div>
 
                   <div className="border border-[#2E684A]/30 bg-[#EBF7F0] p-2 rounded-xs">
-                    <span className="block font-mono text-[7.5px] text-[#2E684A] uppercase">COOLING</span>
+                    <span className="block font-mono text-[7.5px] text-[#2E684A] uppercase">COOLING VS NO ACTION</span>
                     <strong className="font-mono text-sm text-[#2E684A]">
-                      ↓ {currentTimelineCooling.toFixed(1)}°C
+                      ↓ {simulation.coolingDelta.toFixed(1)}°C
                     </strong>
                   </div>
                 </div>
@@ -347,7 +451,7 @@ export default function ScenarioLabView({
                 <div className="flex items-center justify-between text-[10.5px] pt-0.5">
                   <span className="text-[#5C6E6A]">Risk Transition:</span>
                   <span className="font-bold text-[#162220] flex items-center gap-1.5">
-                    <span className="text-gray-600">{simulation.baselineRisk}</span>
+                    <span className="text-gray-600">{simulation.comparisonRisk}</span>
                     <span>➔</span>
                     <span className="text-[#2E684A] font-bold">
                       {simulation.scenarioRisk}
@@ -362,9 +466,38 @@ export default function ScenarioLabView({
             )}
           </div>
 
-          <div className="border-t border-[#EDF2EF] pt-3"><span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-[#6B7E7A]">OBSERVED VALIDATION</span><p className="mt-2 border border-dashed border-[#CBD7D2] bg-[#FAFBFA] p-3 text-[10px] leading-4 text-[#5C6E6A]">No dated satellite or ground observation has been ingested for this intervention. HeatWise will not display a monitoring result until a real baseline/post-observation pair is available.</p></div>
         </section>
       </div>
+
+      <section className="border border-[#E2E8E5] bg-white p-4 shadow-xs rounded-xs space-y-3">
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-[#6B7E7A]">Causal Impact Audit</span>
+              <span className="font-mono text-[8px] text-[#174D46]">DiD NOW · CAUSAL FOREST COHORT LATER</span>
+            </div>
+            <p className="text-[10px] leading-4 text-[#5C6E6A]">
+              Enter matched, same-season observations after implementation. The audit controls for city-wide weather change using a comparable untreated location; it uses the selected portfolio and coverage above as the treatment record.
+            </p>
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+              <label className="font-mono text-[8px] text-[#5C6E6A]">TREATED · BEFORE LST (°C)<input value={treatedBaselineLst} onChange={(event) => setTreatedBaselineLst(event.target.value)} inputMode="decimal" placeholder="e.g. 44.2" className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220]" /></label>
+              <label className="font-mono text-[8px] text-[#5C6E6A]">TREATED · AFTER LST (°C)<input value={treatedPostLst} onChange={(event) => setTreatedPostLst(event.target.value)} inputMode="decimal" placeholder="e.g. 42.8" className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220]" /></label>
+              <label className="font-mono text-[8px] text-[#5C6E6A]">MATCHED CONTROL · BEFORE (°C)<input value={controlBaselineLst} onChange={(event) => setControlBaselineLst(event.target.value)} inputMode="decimal" placeholder="e.g. 43.7" className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220]" /></label>
+              <label className="font-mono text-[8px] text-[#5C6E6A]">MATCHED CONTROL · AFTER (°C)<input value={controlPostLst} onChange={(event) => setControlPostLst(event.target.value)} inputMode="decimal" placeholder="e.g. 43.1" className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220]" /></label>
+            </div>
+            {causalEffect !== null ? (
+              <div className={`border p-2 text-[10px] ${causalEffect < 0 ? "border-[#A9D4BE] bg-[#F1FAF4] text-[#1F6542]" : "border-[#E9C8A6] bg-[#FFF9F0] text-[#8C4A14]"}`}>
+                <strong className="font-mono">ESTIMATED TREATMENT EFFECT: {causalEffect > 0 ? "+" : ""}{causalEffect.toFixed(2)}°C</strong>
+                <span className="ml-1">{causalEffect < 0 ? "Additional cooling beyond the matched control." : "No additional cooling is demonstrated against the matched control."}</span>
+              </div>
+            ) : <p className="border border-dashed border-[#CBD7D2] bg-[#FAFBFA] p-2 text-[9px] text-[#5C6E6A]">No observed outcome is displayed until all four measured values are provided.</p>}
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-[8px] text-[#5C6E6A]">{causalRecordCount} matched audit record{causalRecordCount === 1 ? "" : "s"} stored for this location</span>
+              <button onClick={saveCausalAudit} disabled={causalEffect === null} className="border border-[#174D46] bg-white px-2 py-1 font-mono text-[9px] font-bold text-[#174D46] disabled:cursor-not-allowed disabled:opacity-40">SAVE AUDIT</button>
+            </div>
+            {causalStatus && <p role="status" className="text-[9px] text-[#174D46]">{causalStatus}</p>}
+            <p className="text-[8.5px] leading-3 text-[#5C6E6A]">A Causal Forest is not marked trained here. It is trained only after enough audited, treated and comparable untreated records are collected across locations and seasons.</p>
+          </div>
+      </section>
 
       {/* 4. Abnormality Report Modal */}
       {showAnomalyModal && (

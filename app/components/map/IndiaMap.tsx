@@ -53,6 +53,8 @@ export interface IndiaMapProps {
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   hideFloatingBar?: boolean;
+  /** Let an embedded workstation map fill the height assigned by its parent panel. */
+  fillContainer?: boolean;
 }
 
 export const STATE_TEMP_PROFILES: Record<SeasonName, Record<string, number>> = {
@@ -256,6 +258,7 @@ function IndiaMapComponent({
   isFullscreen: controlledIsFullscreen,
   onToggleFullscreen: controlledOnToggleFullscreen,
   hideFloatingBar = false,
+  fillContainer = false,
 }: IndiaMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRootRef = useRef<HTMLDivElement>(null);
@@ -1132,7 +1135,7 @@ function IndiaMapComponent({
       className={`geo-canvas-container relative w-full bg-[#081514] select-none transition-all duration-300 ${
         isFullscreen
           ? "fixed inset-0 z-[99999] h-screen w-screen !m-0 !p-0"
-          : "h-[540px] xl:h-[580px] overflow-hidden"
+          : fillContainer ? "h-full min-h-[620px] overflow-hidden" : "h-[540px] xl:h-[580px] overflow-hidden"
       }`}
     >
       {/* Top Floating Control Bar: Compact Sleek Dark Glass Pod (Only shown if !hideFloatingBar or when in isFullscreen) */}

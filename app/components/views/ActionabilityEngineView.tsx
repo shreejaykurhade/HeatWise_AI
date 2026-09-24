@@ -214,9 +214,9 @@ export default function ActionabilityEngineView({
         </div>
 
         {/* Right Column: Live Context Map + 05 Verification Loop */}
-        <div className="space-y-2.5 xl:col-span-7 flex flex-col justify-between">
+        <div className="xl:col-span-7 flex self-stretch">
           {/* Card 1: 03 · Live Hotspot Context Map */}
-          <section className="overflow-hidden border border-[#E2E8E5] bg-white shadow-xs rounded-xs flex flex-col">
+          <section className="overflow-hidden border border-[#E2E8E5] bg-white shadow-xs rounded-xs flex min-h-[620px] flex-1 flex-col">
             <div className="flex items-center justify-between border-b border-[#EDF2EF] px-3 py-1.5 bg-[#FAFBFA]">
               <div className="flex items-center gap-1.5">
                 <span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-[#174D46]">
@@ -232,7 +232,7 @@ export default function ActionabilityEngineView({
             </div>
 
             {/* Map Canvas (Optimized clean height, no overlapping HUD elements) */}
-            <div className="h-[385px] relative">
+            <div className="relative min-h-[620px] flex-1">
               <IndiaMap
                 city={city}
                 season={season}
@@ -240,6 +240,7 @@ export default function ActionabilityEngineView({
                 selectedHotspot={selectedHotspotName}
                 onSelectCity={onSelectCity}
                 onSelectHotspot={onSelectHotspot}
+                fillContainer
               />
             </div>
           </section>

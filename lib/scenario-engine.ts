@@ -83,8 +83,10 @@ export interface SimpleSimulationResult {
   coolingDelta: number; // positive number: baseline - scenario
   deltaLst: number;     // scenario - baseline (negative when cooler)
   baselineRisk: string;
+  comparisonRisk: string;
   scenarioRisk: string;
   baselineProb: number;
+  comparisonProb: number;
   scenarioProb: number;
   baselineUhi: number;
   scenarioUhi: number;
@@ -327,8 +329,10 @@ export function simulateIntervention(
     coolingDelta,
     deltaLst,
     baselineRisk: basePred.riskBand,
+    comparisonRisk: comparisonPred.riskBand,
     scenarioRisk: scenarioPred.riskBand,
     baselineProb: basePred.hotspotProbability,
+    comparisonProb: comparisonPred.hotspotProbability,
     scenarioProb: scenarioPred.hotspotProbability,
     baselineUhi,
     scenarioUhi,
