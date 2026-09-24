@@ -215,11 +215,10 @@ export default function ReportsView({ city, season, selectedHotspotName }: Repor
               <button
                 key={lang.code}
                 onClick={() => setSelectedLang(lang.code)}
-                className={`px-3 py-1.5 text-xs rounded-xs border transition-all cursor-pointer flex items-center gap-1.5 ${
-                  isSelected
+                className={`px-3 py-1.5 text-xs rounded-xs border transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
                     ? "bg-[#0B253F] text-white border-[#0B253F] font-bold shadow-xs scale-[1.02]"
                     : "bg-white text-[#162220] border-[#D1DCD8] hover:border-[#174D46] hover:bg-[#F9FCFB]"
-                }`}
+                  }`}
                 title={`Generate report in ${lang.name}`}
               >
                 <span className="text-[13px]">{lang.nativeName}</span>
@@ -228,9 +227,8 @@ export default function ReportsView({ city, season, selectedHotspotName }: Repor
                 </span>
                 {isDefault && (
                   <span
-                    className={`text-[8.5px] px-1 py-0.2 rounded-3xs font-mono font-bold ${
-                      isSelected ? "bg-[#174D46] text-white" : "bg-[#E2EFEA] text-[#174D46]"
-                    }`}
+                    className={`text-[8.5px] px-1 py-0.2 rounded-3xs font-mono font-bold ${isSelected ? "bg-[#174D46] text-white" : "bg-[#E2EFEA] text-[#174D46]"
+                      }`}
                   >
                     ★ State
                   </span>
@@ -409,10 +407,10 @@ export default function ReportsView({ city, season, selectedHotspotName }: Repor
                   ["Mapped water features", inventory.assets.waterBodies],
                   ["Mapped built assets", inventory.assets.buildings],
                 ] as [string, SpatialAsset[]][]).map(([label, assets]) => {
-                  const named = (assets as SpatialAsset[]).filter((asset) => !asset.name.startsWith("Unnamed") && !asset.name.startsWith("Building footprint")).slice(0, 4);
+                  const named = assets.filter((asset) => !asset.name.startsWith("Unnamed") && !asset.name.startsWith("Building footprint")).slice(0, 4);
                   return (
-                    <div key={String(label)} className="border border-[#E2E8E5] bg-[#FAFBFA] p-2 rounded-xs">
-                      <div className="font-mono text-[8px] uppercase tracking-wide text-[#174D46]">{String(label)}</div>
+                    <div key={label} className="border border-[#E2E8E5] bg-[#FAFBFA] p-2 rounded-xs">
+                      <div className="font-mono text-[8px] uppercase tracking-wide text-[#174D46]">{label}</div>
                       <div className="mt-1 text-[#162220] leading-relaxed">
                         {named.length ? named.map((asset) => asset.name).join(" · ") : "No named mapped assets returned in this category."}
                       </div>

@@ -125,13 +125,12 @@ export default function ActionabilityEngineView({
                 01 · HEAT NEED DIAGNOSIS
               </span>
               <span
-                className={`px-2 py-0.5 font-mono text-[8.5px] font-extrabold uppercase rounded-2xs ${
-                  ward.risk === "Very high"
+                className={`px-2 py-0.5 font-mono text-[8.5px] font-extrabold uppercase rounded-2xs ${ward.risk === "Very high"
                     ? "bg-[#C93B2B] text-white"
                     : ward.risk === "High"
-                    ? "bg-[#D9822B] text-white"
-                    : "bg-[#2E684A] text-white"
-                }`}
+                      ? "bg-[#D9822B] text-white"
+                      : "bg-[#2E684A] text-white"
+                  }`}
               >
                 {ward.risk} Risk
               </span>
@@ -208,8 +207,41 @@ export default function ActionabilityEngineView({
           </section>
 
           <section className="border border-[#E2E8E5] bg-white p-3 shadow-xs rounded-xs">
-            <div className="flex items-center justify-between border-b border-[#EDF2EF] pb-1.5"><h3 className="font-sans text-xs font-bold text-[#162220]">03 · Live named asset register</h3><span className="font-mono text-[8px] font-bold text-[#174D46]">OSM OBJECTS · 250 m</span></div>
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">{([["Building footprints", inventory?.assets.buildings, "#0B253F"], ["Street corridors", inventory?.assets.corridors, "#D9822B"], ["Parks / open space", inventory?.assets.parks, "#2E684A"], ["Waterways / water bodies", inventory?.assets.waterBodies, "#2878B8"]] as [string, SpatialAsset[] | undefined, string][]).map(([label, list, color]) => { const assets = (list as SpatialAsset[] | undefined) ?? []; const named = assets.filter((asset) => !asset.name.startsWith("Building footprint #") && !asset.name.startsWith("Unnamed")); const unnamedCount = assets.length - named.length; return <div key={String(label)} className="border border-[#E2E8E5] bg-[#FAFBFA] p-2"><div className="flex justify-between"><strong className="text-[10px]">{String(label)}</strong><span className="font-mono text-[8px]" style={{ color: String(color) }}>{assets.length}</span></div><div className="mt-1 max-h-24 space-y-1 overflow-y-auto">{named.length ? named.map((asset) => <div key={`${asset.osmId}-${asset.name}`} className="border-l-2 pl-1.5 text-[9px]" style={{ borderColor: String(color) }}><strong className="block truncate">{asset.name}</strong><span className="font-mono text-[7.5px] text-[#5C6E6A]">{asset.type} · OSM {asset.osmId}</span></div>) : <span className="text-[9px] text-[#5C6E6A]">No named mapped feature.</span>}{unnamedCount > 0 && <p className="border-t border-[#E2E8E5] pt-1 font-mono text-[7.5px] text-[#7A8C88]">+ {unnamedCount} unnamed mapped object{unnamedCount === 1 ? "" : "s"}</p>}</div></div>; })}</div>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {([
+                ["Building footprints", inventory?.assets.buildings, "#0B253F"],
+                ["Street corridors", inventory?.assets.corridors, "#D9822B"],
+                ["Parks / open space", inventory?.assets.parks, "#2E684A"],
+                ["Waterways / water bodies", inventory?.assets.waterBodies, "#2878B8"],
+              ] as [string, SpatialAsset[] | undefined, string][]).map(([label, list, color]) => {
+                const assets = list ?? [];
+                const named = assets.filter((asset) => !asset.name.startsWith("Building footprint #") && !asset.name.startsWith("Unnamed"));
+                const unnamedCount = assets.length - named.length;
+                return (
+                  <div key={label} className="border border-[#E2E8E5] bg-[#FAFBFA] p-2">
+                    <div className="flex justify-between">
+                      <strong className="text-[10px]">{label}</strong>
+                      <span className="font-mono text-[8px]" style={{ color }}>{assets.length}</span>
+                    </div>
+                    <div className="mt-1 max-h-24 space-y-1 overflow-y-auto">
+                      {named.length ? (
+                        named.map((asset) => (
+                          <div key={`${asset.osmId}-${asset.name}`} className="border-l-2 pl-1.5 text-[9px]" style={{ borderColor: color }}>
+                            <strong className="block truncate">{asset.name}</strong>
+                            <span className="font-mono text-[7.5px] text-[#5C6E6A]">{asset.type} · OSM {asset.osmId}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-[9px] text-[#5C6E6A]">No named mapped feature.</span>
+                      )}
+                      {unnamedCount > 0 && (
+                        <p className="border-t border-[#E2E8E5] pt-1 font-mono text-[7.5px] text-[#7A8C88]">+ {unnamedCount} unnamed mapped object{unnamedCount === 1 ? "" : "s"}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         </div>
 
