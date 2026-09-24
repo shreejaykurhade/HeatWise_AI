@@ -266,45 +266,137 @@ export default function ScenarioLabView({
         </div>
       </header>
 
-      {/* 2. Main Workstation: Large Thermal Map (Left) + Clean Control Panel (Right) */}
+      {/* 2. Main Workstation: Large Thermal Map & Causal Audit (Left) + Control Panel (Right) */}
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
-        {/* Left / Main Area: Large Thermal Map + Timeline Player */}
-        <section className="self-start border border-[#E2E8E5] bg-white shadow-xs rounded-xs xl:col-span-8 flex flex-col overflow-hidden">
-          {/* Date comparison heading */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EDF2EF] px-3.5 py-2 bg-[#FAFBFA]">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#174D46]">
-                SIDE-BY-SIDE DATE COMPARISON
-              </span>
-              <span className="text-[10px] text-[#5C6E6A]">
-                Baseline {simulation.baselineDate} → target {simulation.comparisonDate}
-              </span>
+        {/* Left / Main Area: Large Thermal Map + Causal Impact Audit */}
+        <div className="space-y-3 xl:col-span-8 flex flex-col">
+          {/* Card 1: Side-by-side Date Comparison Thermal Map */}
+          <section className="border border-[#E2E8E5] bg-white shadow-xs rounded-xs flex flex-col overflow-hidden">
+            {/* Date comparison heading */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EDF2EF] px-3.5 py-2 bg-[#FAFBFA]">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#174D46]">
+                  SIDE-BY-SIDE DATE COMPARISON
+                </span>
+                <span className="text-[10px] text-[#5C6E6A]">
+                  Baseline {simulation.baselineDate} → target {simulation.comparisonDate}
+                </span>
+              </div>
+              <span className="font-mono text-[8px] text-[#174D46]">DATE-CONDITIONED MODEL OUTPUT</span>
             </div>
-            <span className="font-mono text-[8px] text-[#174D46]">DATE-CONDITIONED MODEL OUTPUT</span>
-          </div>
 
-          {/* Date Comparison Map Canvas */}
-          <div className="grid min-h-[460px] grid-cols-1 gap-px bg-[#E2E8E5] lg:grid-cols-2">
-            <div className="relative min-h-[380px] bg-white">
-              <IndiaMap city={city} season={baselineMapSeason} mode="Heat stress" selectedHotspot={selectedHotspotName} onSelectCity={onSelectCity} onSelectHotspot={onSelectHotspot} thermalOffsetC={baselineThermalOffset} />
-              <div className="absolute left-3 top-3 z-10 border border-white/15 bg-[#0B1C1A]/90 px-3 py-2 font-mono text-[10px] text-white backdrop-blur-xs"><span className="block text-[8px] text-[#A0BCB6]">BASELINE MODEL MAP</span><strong>{simulation.baselineDate}</strong><span className="ml-2 text-[#FFB35C]">{simulation.baselineLst.toFixed(1)}°C</span></div>
+            {/* Date Comparison Map Canvas */}
+            <div className="grid min-h-[460px] grid-cols-1 gap-px bg-[#E2E8E5] lg:grid-cols-2">
+              <div className="relative min-h-[380px] bg-white">
+                <IndiaMap city={city} season={baselineMapSeason} mode="Heat stress" selectedHotspot={selectedHotspotName} onSelectCity={onSelectCity} onSelectHotspot={onSelectHotspot} thermalOffsetC={baselineThermalOffset} />
+                <div className="absolute left-3 top-3 z-10 border border-white/15 bg-[#0B1C1A]/90 px-3 py-2 font-mono text-[10px] text-white backdrop-blur-xs"><span className="block text-[8px] text-[#A0BCB6]">BASELINE MODEL MAP</span><strong>{simulation.baselineDate}</strong><span className="ml-2 text-[#FFB35C]">{simulation.baselineLst.toFixed(1)}°C</span></div>
+              </div>
+              <div className="relative min-h-[380px] bg-white">
+                <IndiaMap city={city} season={comparisonMapSeason} mode="Heat stress" selectedHotspot={selectedHotspotName} onSelectCity={onSelectCity} onSelectHotspot={onSelectHotspot} thermalOffsetC={comparisonThermalOffset} />
+                <div className="absolute left-3 top-3 z-10 border border-white/15 bg-[#174D46]/95 px-3 py-2 font-mono text-[10px] text-white backdrop-blur-xs"><span className="block text-[8px] text-[#CDE7DD]">TARGET-DATE / NO INTERVENTION</span><strong>{simulation.comparisonDate}</strong><span className="ml-2 text-[#FFDEA5]">{simulation.comparisonNoInterventionLst.toFixed(1)}°C</span></div>
+              </div>
             </div>
-            <div className="relative min-h-[380px] bg-white">
-              <IndiaMap city={city} season={comparisonMapSeason} mode="Heat stress" selectedHotspot={selectedHotspotName} onSelectCity={onSelectCity} onSelectHotspot={onSelectHotspot} thermalOffsetC={comparisonThermalOffset} />
-              <div className="absolute left-3 top-3 z-10 border border-white/15 bg-[#174D46]/95 px-3 py-2 font-mono text-[10px] text-white backdrop-blur-xs"><span className="block text-[8px] text-[#CDE7DD]">TARGET-DATE / NO INTERVENTION</span><strong>{simulation.comparisonDate}</strong><span className="ml-2 text-[#FFDEA5]">{simulation.comparisonNoInterventionLst.toFixed(1)}°C</span></div>
+
+            <div className="grid grid-cols-1 gap-2 border-t border-[#E2E8E5] bg-[#F7FBF9] p-3 sm:grid-cols-3">
+              <div className="border border-[#D7E5DF] bg-white p-2"><span className="font-mono text-[8px] text-[#5C6E6A]">DATE-TO-DATE ΔLST</span><strong className={`mt-1 block font-mono text-lg ${simulation.temporalChangeNoIntervention <= 0 ? "text-[#2E684A]" : "text-[#C93B2B]"}`}>{simulation.temporalChangeNoIntervention >= 0 ? "+" : ""}{simulation.temporalChangeNoIntervention.toFixed(1)}°C</strong></div>
+              <div className="border border-[#D7E5DF] bg-white p-2"><span className="font-mono text-[8px] text-[#5C6E6A]">TARGET LST · WITH INTERVENTION</span><strong className="mt-1 block font-mono text-lg text-[#174D46]">{simulation.scenarioLst.toFixed(1)}°C</strong></div>
+              <div className="border border-[#D7E5DF] bg-white p-2"><span className="font-mono text-[8px] text-[#5C6E6A]">ISOLATED COOLING EFFECT</span><strong className="mt-1 block font-mono text-lg text-[#2E684A]">↓ {simulation.coolingDelta.toFixed(1)}°C</strong></div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-2 border-t border-[#E2E8E5] bg-[#F7FBF9] p-3 sm:grid-cols-3">
-            <div className="border border-[#D7E5DF] bg-white p-2"><span className="font-mono text-[8px] text-[#5C6E6A]">DATE-TO-DATE ΔLST</span><strong className={`mt-1 block font-mono text-lg ${simulation.temporalChangeNoIntervention <= 0 ? "text-[#2E684A]" : "text-[#C93B2B]"}`}>{simulation.temporalChangeNoIntervention >= 0 ? "+" : ""}{simulation.temporalChangeNoIntervention.toFixed(1)}°C</strong></div>
-            <div className="border border-[#D7E5DF] bg-white p-2"><span className="font-mono text-[8px] text-[#5C6E6A]">TARGET LST · WITH INTERVENTION</span><strong className="mt-1 block font-mono text-lg text-[#174D46]">{simulation.scenarioLst.toFixed(1)}°C</strong></div>
-            <div className="border border-[#D7E5DF] bg-white p-2"><span className="font-mono text-[8px] text-[#5C6E6A]">ISOLATED COOLING EFFECT</span><strong className="mt-1 block font-mono text-lg text-[#2E684A]">↓ {simulation.coolingDelta.toFixed(1)}°C</strong></div>
-          </div>
-
-          <div className="border-t border-[#E2E8E5] bg-[#F7FBF9] p-3 text-[10px] text-[#5C6E6A]">
-            <strong className="font-mono text-[#174D46]">MODEL SCOPE:</strong> This map shows the XGBoost counterfactual after the selected physical feature inputs are changed. Implementation progress and satellite verification appear only after real dated observations are supplied.
-          </div>
-        </section>
+            <div className="border-t border-[#E2E8E5] bg-[#F7FBF9] p-3 text-[10px] text-[#5C6E6A]">
+              <strong className="font-mono text-[#174D46]">MODEL SCOPE:</strong> This map shows the XGBoost counterfactual after the selected physical feature inputs are changed. Implementation progress and satellite verification appear only after real dated observations are supplied.
+            </div>
+          </section>
+          {/* Causal Impact Audit placed directly under the Map Comparison to fill left-column space */}
+          <section className="border border-[#E2E8E5] bg-white p-4 shadow-xs rounded-xs space-y-3">
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between gap-2 border-b border-[#EDF2EF] pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#174D46] bg-[#E8F3EE] px-2 py-0.5 rounded-2xs">
+                    CAUSAL IMPACT AUDIT
+                  </span>
+                  <span className="text-[10px] text-[#5C6E6A] font-semibold">
+                    Post-Implementation In-Situ Validation
+                  </span>
+                </div>
+                <span className="font-mono text-[8px] font-bold text-[#174D46]">
+                  DiD NOW · CAUSAL FOREST COHORT LATER
+                </span>
+              </div>
+              <p className="text-[10px] leading-4 text-[#5C6E6A]">
+                Enter matched, same-season observations after implementation. The audit controls for city-wide weather change using a comparable untreated location; it uses the selected portfolio and coverage above as the treatment record.
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <label className="font-mono text-[8px] text-[#5C6E6A]">
+                  TREATED · BEFORE LST (°C)
+                  <input
+                    value={treatedBaselineLst}
+                    onChange={(event) => setTreatedBaselineLst(event.target.value)}
+                    inputMode="decimal"
+                    placeholder="e.g. 44.2"
+                    className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220] rounded-2xs focus:outline-none focus:border-[#174D46]"
+                  />
+                </label>
+                <label className="font-mono text-[8px] text-[#5C6E6A]">
+                  TREATED · AFTER LST (°C)
+                  <input
+                    value={treatedPostLst}
+                    onChange={(event) => setTreatedPostLst(event.target.value)}
+                    inputMode="decimal"
+                    placeholder="e.g. 42.8"
+                    className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220] rounded-2xs focus:outline-none focus:border-[#174D46]"
+                  />
+                </label>
+                <label className="font-mono text-[8px] text-[#5C6E6A]">
+                  MATCHED CONTROL · BEFORE (°C)
+                  <input
+                    value={controlBaselineLst}
+                    onChange={(event) => setControlBaselineLst(event.target.value)}
+                    inputMode="decimal"
+                    placeholder="e.g. 43.7"
+                    className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220] rounded-2xs focus:outline-none focus:border-[#174D46]"
+                  />
+                </label>
+                <label className="font-mono text-[8px] text-[#5C6E6A]">
+                  MATCHED CONTROL · AFTER (°C)
+                  <input
+                    value={controlPostLst}
+                    onChange={(event) => setControlPostLst(event.target.value)}
+                    inputMode="decimal"
+                    placeholder="e.g. 43.1"
+                    className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220] rounded-2xs focus:outline-none focus:border-[#174D46]"
+                  />
+                </label>
+              </div>
+              {causalEffect !== null ? (
+                <div className={`border p-2 text-[10px] rounded-2xs ${causalEffect < 0 ? "border-[#A9D4BE] bg-[#F1FAF4] text-[#1F6542]" : "border-[#E9C8A6] bg-[#FFF9F0] text-[#8C4A14]"}`}>
+                  <strong className="font-mono">ESTIMATED TREATMENT EFFECT: {causalEffect > 0 ? "+" : ""}{causalEffect.toFixed(2)}°C</strong>
+                  <span className="ml-1">{causalEffect < 0 ? "Additional cooling beyond the matched control." : "No additional cooling is demonstrated against the matched control."}</span>
+                </div>
+              ) : (
+                <p className="border border-dashed border-[#CBD7D2] bg-[#FAFBFA] p-2 text-[9px] text-[#5C6E6A] rounded-2xs">
+                  No observed outcome is displayed until all four measured values are provided.
+                </p>
+              )}
+              <div className="flex items-center justify-between gap-2 pt-0.5">
+                <span className="font-mono text-[8.5px] text-[#5C6E6A]">
+                  {causalRecordCount} matched audit record{causalRecordCount === 1 ? "" : "s"} stored for this location
+                </span>
+                <button
+                  onClick={saveCausalAudit}
+                  disabled={causalEffect === null}
+                  className="border border-[#174D46] bg-white px-3 py-1 font-mono text-[9px] font-bold text-[#174D46] hover:bg-[#E8F3EE] rounded-2xs transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  SAVE AUDIT
+                </button>
+              </div>
+              {causalStatus && <p role="status" className="text-[9px] text-[#174D46] font-semibold">{causalStatus}</p>}
+              <p className="text-[8px] leading-3 text-[#7A8C88] border-t border-[#EDF2EF] pt-1.5">
+                A Causal Forest is not marked trained here. It is trained only after enough audited, treated and comparable untreated records are collected across locations and seasons.
+              </p>
+            </div>
+          </section>
+        </div>
 
         {/* Small Right Control Panel */}
         <section className="border border-[#E2E8E5] bg-white p-4 shadow-xs rounded-xs xl:col-span-4 flex flex-col justify-between space-y-4">
@@ -465,39 +557,8 @@ export default function ScenarioLabView({
               </div>
             )}
           </div>
-
         </section>
       </div>
-
-      <section className="border border-[#E2E8E5] bg-white p-4 shadow-xs rounded-xs space-y-3">
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-[#6B7E7A]">Causal Impact Audit</span>
-              <span className="font-mono text-[8px] text-[#174D46]">DiD NOW · CAUSAL FOREST COHORT LATER</span>
-            </div>
-            <p className="text-[10px] leading-4 text-[#5C6E6A]">
-              Enter matched, same-season observations after implementation. The audit controls for city-wide weather change using a comparable untreated location; it uses the selected portfolio and coverage above as the treatment record.
-            </p>
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-              <label className="font-mono text-[8px] text-[#5C6E6A]">TREATED · BEFORE LST (°C)<input value={treatedBaselineLst} onChange={(event) => setTreatedBaselineLst(event.target.value)} inputMode="decimal" placeholder="e.g. 44.2" className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220]" /></label>
-              <label className="font-mono text-[8px] text-[#5C6E6A]">TREATED · AFTER LST (°C)<input value={treatedPostLst} onChange={(event) => setTreatedPostLst(event.target.value)} inputMode="decimal" placeholder="e.g. 42.8" className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220]" /></label>
-              <label className="font-mono text-[8px] text-[#5C6E6A]">MATCHED CONTROL · BEFORE (°C)<input value={controlBaselineLst} onChange={(event) => setControlBaselineLst(event.target.value)} inputMode="decimal" placeholder="e.g. 43.7" className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220]" /></label>
-              <label className="font-mono text-[8px] text-[#5C6E6A]">MATCHED CONTROL · AFTER (°C)<input value={controlPostLst} onChange={(event) => setControlPostLst(event.target.value)} inputMode="decimal" placeholder="e.g. 43.1" className="mt-1 block w-full border border-[#D2DDD8] bg-white p-1.5 text-[10px] text-[#162220]" /></label>
-            </div>
-            {causalEffect !== null ? (
-              <div className={`border p-2 text-[10px] ${causalEffect < 0 ? "border-[#A9D4BE] bg-[#F1FAF4] text-[#1F6542]" : "border-[#E9C8A6] bg-[#FFF9F0] text-[#8C4A14]"}`}>
-                <strong className="font-mono">ESTIMATED TREATMENT EFFECT: {causalEffect > 0 ? "+" : ""}{causalEffect.toFixed(2)}°C</strong>
-                <span className="ml-1">{causalEffect < 0 ? "Additional cooling beyond the matched control." : "No additional cooling is demonstrated against the matched control."}</span>
-              </div>
-            ) : <p className="border border-dashed border-[#CBD7D2] bg-[#FAFBFA] p-2 text-[9px] text-[#5C6E6A]">No observed outcome is displayed until all four measured values are provided.</p>}
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-[8px] text-[#5C6E6A]">{causalRecordCount} matched audit record{causalRecordCount === 1 ? "" : "s"} stored for this location</span>
-              <button onClick={saveCausalAudit} disabled={causalEffect === null} className="border border-[#174D46] bg-white px-2 py-1 font-mono text-[9px] font-bold text-[#174D46] disabled:cursor-not-allowed disabled:opacity-40">SAVE AUDIT</button>
-            </div>
-            {causalStatus && <p role="status" className="text-[9px] text-[#174D46]">{causalStatus}</p>}
-            <p className="text-[8.5px] leading-3 text-[#5C6E6A]">A Causal Forest is not marked trained here. It is trained only after enough audited, treated and comparable untreated records are collected across locations and seasons.</p>
-          </div>
-      </section>
 
       {/* 4. Abnormality Report Modal */}
       {showAnomalyModal && (
