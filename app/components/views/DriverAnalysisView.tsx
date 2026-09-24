@@ -244,142 +244,133 @@ export default function DriverAnalysisView({
             </div>
           </div>
 
-          {/* Card 2: Urban Microclimate & Surface Heat Physics (Intuitive & User-Friendly) */}
+          {/* Card 2: Urban Microclimate & Surface Heat Physics (Concise & Output-Focused) */}
           <div className="border border-[#E2E8E5] bg-white p-4 shadow-xs rounded-xs flex-1 flex flex-col justify-between space-y-3">
             <div>
-              <div className="flex items-center justify-between border-b border-[#EDF2EF] pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EDF2EF] pb-2">
                 <div>
                   <h3 className="font-sans text-xs sm:text-sm font-bold text-[#162220]">
                     Urban Microclimate & Surface Heat Physics
                   </h3>
-                  <span className="font-mono text-[9px] text-[#5C6E6A]">
-                    How solar energy is absorbed, trapped, and naturally cooled in {analysisTarget}
-                  </span>
+                  {/* Energy Balance Formula prominently displayed */}
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-[9px]">
+                    <span className="text-[#5C6E6A] font-bold">FORMULA:</span>
+                    <code className="bg-[#174D46]/10 text-[#174D46] px-2 py-0.5 rounded-2xs font-bold border border-[#174D46]/20">
+                      R_n = H + λE + G
+                    </code>
+                    <span className="text-[#7A8C88]">
+                      (Net Radiation = Air Heating + Plant Cooling + Built Storage)
+                    </span>
+                  </div>
                 </div>
                 <span className="font-mono text-[8px] font-bold text-[#174D46] bg-[#E8F3EE] px-2 py-0.5 rounded-2xs border border-[#174D46]/20">
                   PHYSICS-VERIFIED (PINN)
                 </span>
               </div>
 
-              {/* 3 Main Heat Pathways (Easy to understand with icons & status badges) */}
+              {/* 3 Main Heat Pathways (Clean, Output-Focused) */}
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono">
                 {/* 1. Air Heating */}
-                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2.5 rounded-xs flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between text-[8px] text-[#6B7D79] font-bold uppercase">
-                      <span>🌡️ Air Heating</span>
-                      <span className="text-[#C93B2B]">H-FLUX</span>
-                    </div>
-                    <strong className={`mt-1 block text-sm font-bold ${seb.sensibleFractionPct > 40 ? "text-[#C93B2B]" : "text-[#D9822B]"}`}>
+                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-3 rounded-xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-[8px] text-[#6B7D79] font-bold uppercase">
+                    <span>🌡️ Air Heating</span>
+                    <span className="text-[#C93B2B]">H-FLUX</span>
+                  </div>
+                  <div className="my-1.5">
+                    <strong className={`block text-base font-bold ${seb.sensibleFractionPct > 40 ? "text-[#C93B2B]" : "text-[#D9822B]"}`}>
                       {seb.sensibleFractionPct > 50 ? "HIGH" : seb.sensibleFractionPct > 25 ? "MODERATE" : "LOW"} ({seb.sensibleFractionPct}%)
                     </strong>
-                    <span className="block text-[8px] text-[#162220] font-sans font-medium mt-0.5">
-                      {seb.sensibleHeatWm2} W/m² warming the air
+                    <span className="text-xs text-[#162220] font-bold">
+                      {seb.sensibleHeatWm2} W/m²
                     </span>
                   </div>
-                  <p className="font-sans text-[8px] text-[#7A8C88] border-t border-[#EDF2EF] pt-1 mt-1 leading-tight">
-                    Hot road & roof surfaces transferring heat directly to pedestrian air.
-                  </p>
+                  <span className="text-[7.5px] text-[#7A8C88] uppercase tracking-wider font-mono">
+                    Heat emitted into air
+                  </span>
                 </div>
 
-                {/* 2. Natural Plant Cooling */}
-                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2.5 rounded-xs flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between text-[8px] text-[#6B7D79] font-bold uppercase">
-                      <span>🌿 Plant Cooling</span>
-                      <span className="text-[#2878B8]">λE-FLUX</span>
-                    </div>
-                    <strong className={`mt-1 block text-sm font-bold ${seb.latentFractionPct < 15 ? "text-[#C93B2B]" : "text-[#2878B8]"}`}>
-                      {seb.latentFractionPct < 15 ? "DEFICIT (LOW)" : seb.latentFractionPct < 30 ? "MODERATE" : "HEALTHY"} ({seb.latentFractionPct}%)
+                {/* 2. Plant Cooling */}
+                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-3 rounded-xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-[8px] text-[#6B7D79] font-bold uppercase">
+                    <span>🌿 Plant Cooling</span>
+                    <span className="text-[#2878B8]">λE-FLUX</span>
+                  </div>
+                  <div className="my-1.5">
+                    <strong className={`block text-base font-bold ${seb.latentFractionPct < 15 ? "text-[#C93B2B]" : "text-[#2878B8]"}`}>
+                      {seb.latentFractionPct < 15 ? "DEFICIT" : seb.latentFractionPct < 30 ? "MODERATE" : "HEALTHY"} ({seb.latentFractionPct}%)
                     </strong>
-                    <span className="block text-[8px] text-[#162220] font-sans font-medium mt-0.5">
-                      {seb.latentHeatWm2} W/m² natural cooling
+                    <span className="text-xs text-[#162220] font-bold">
+                      {seb.latentHeatWm2} W/m²
                     </span>
                   </div>
-                  <p className="font-sans text-[8px] text-[#7A8C88] border-t border-[#EDF2EF] pt-1 mt-1 leading-tight">
-                    {seb.latentFractionPct < 15 ? "Low tree cover limits natural evaporative sweat-cooling." : "Vegetation provides active evaporative cooling."}
-                  </p>
+                  <span className="text-[7.5px] text-[#7A8C88] uppercase tracking-wider font-mono">
+                    Vegetative cooling rate
+                  </span>
                 </div>
 
                 {/* 3. Heat Soaked into Buildings */}
-                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2.5 rounded-xs flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between text-[8px] text-[#6B7D79] font-bold uppercase">
-                      <span>🧱 Heat Stored in Built Mass</span>
-                      <span className="text-[#D9822B]">G-STORAGE</span>
-                    </div>
-                    <strong className="mt-1 block text-sm font-bold text-[#D9822B]">
+                <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-3 rounded-xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-[8px] text-[#6B7D79] font-bold uppercase">
+                    <span>🧱 Built Heat Storage</span>
+                    <span className="text-[#D9822B]">G-STORAGE</span>
+                  </div>
+                  <div className="my-1.5">
+                    <strong className="block text-base font-bold text-[#D9822B]">
                       {seb.storageFractionPct > 35 ? "HIGH STORAGE" : "MODERATE"} ({seb.storageFractionPct}%)
                     </strong>
-                    <span className="block text-[8px] text-[#162220] font-sans font-medium mt-0.5">
-                      {seb.groundStorageWm2} W/m² heat sponge
+                    <span className="text-xs text-[#162220] font-bold">
+                      {seb.groundStorageWm2} W/m²
                     </span>
                   </div>
-                  <p className="font-sans text-[8px] text-[#7A8C88] border-t border-[#EDF2EF] pt-1 mt-1 leading-tight">
-                    Concrete & asphalt soak up daytime sun and re-radiate heat at night.
-                  </p>
+                  <span className="text-[7.5px] text-[#7A8C88] uppercase tracking-wider font-mono">
+                    Heat trapped in built mass
+                  </span>
                 </div>
               </div>
 
-              {/* Targeted Microclimate Cooling Remedies (Plain English with clear impact) */}
-              <div className="mt-3 border border-[#D7E5DF] bg-[#F7FBF9] p-3 rounded-xs space-y-2">
-                <div className="flex items-center justify-between">
+              {/* Actionable Cooling Interventions (Clean & Output-Focused) */}
+              <div className="mt-3 border border-[#D7E5DF] bg-[#F7FBF9] p-3 rounded-xs space-y-1.5">
+                <div className="flex items-center justify-between mb-1 pb-1 border-b border-[#D7E5DF]">
                   <span className="font-mono text-[9px] font-bold uppercase text-[#174D46]">
-                    Actionable Cooling Interventions & Expected Temperature Drop
+                    Actionable Cooling Interventions
                   </span>
-                  <span className="font-mono text-[8px] text-[#5C6E6A]">PHYSICAL IMPACT</span>
+                  <span className="font-mono text-[8px] text-[#5C6E6A]">PREDICTED COOLING</span>
                 </div>
 
-                <div className="space-y-1.5 text-[10.5px]">
-                  <div className="flex items-center justify-between border-b border-[#E2E8E5] pb-1">
-                    <div className="text-[#162220] flex items-center gap-1.5">
-                      <span className="text-sm">🌳</span>
-                      <div>
-                        <strong>Add 15% More Tree Canopy</strong>
-                        <span className="hidden sm:inline text-[9px] text-[#5C6E6A] ml-1.5">— Provides shade & restores evaporative plant cooling</span>
-                      </div>
-                    </div>
-                    <span className="font-mono text-[10px] font-bold text-[#2E684A] whitespace-nowrap">
-                      ↓ {seb.canopyCoolingPotentialC}°C Cooling
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center justify-between border-b border-[#E2E8E5] py-1">
+                    <span className="text-[#162220] font-medium flex items-center gap-1.5">
+                      <span>🌳</span> Tree Canopy Expansion (+15% cover)
+                    </span>
+                    <span className="font-mono text-xs font-bold text-[#2E684A]">
+                      ↓ {seb.canopyCoolingPotentialC}°C
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between border-b border-[#E2E8E5] pb-1">
-                    <div className="text-[#162220] flex items-center gap-1.5">
-                      <span className="text-sm">🏢</span>
-                      <div>
-                        <strong>Paint Roofs White (Cool Roof Coatings)</strong>
-                        <span className="hidden sm:inline text-[9px] text-[#5C6E6A] ml-1.5">— Reflects 65%+ of sunlight back to space instead of absorbing</span>
-                      </div>
-                    </div>
-                    <span className="font-mono text-[10px] font-bold text-[#2E684A] whitespace-nowrap">
-                      ↓ {seb.albedoCoolingPotentialC}°C Cooling
+                  <div className="flex items-center justify-between border-b border-[#E2E8E5] py-1">
+                    <span className="text-[#162220] font-medium flex items-center gap-1.5">
+                      <span>🏢</span> High-Albedo Cool Roof Coatings
+                    </span>
+                    <span className="font-mono text-xs font-bold text-[#2E684A]">
+                      ↓ {seb.albedoCoolingPotentialC}°C
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between border-b border-[#E2E8E5] pb-1">
-                    <div className="text-[#162220] flex items-center gap-1.5">
-                      <span className="text-sm">💧</span>
-                      <div>
-                        <strong>Permeable Ground & Water Misting</strong>
-                        <span className="hidden sm:inline text-[9px] text-[#5C6E6A] ml-1.5">— Allows soil to breathe and evaporates rainwater cooling</span>
-                      </div>
-                    </div>
-                    <span className="font-mono text-[10px] font-bold text-[#2E684A] whitespace-nowrap">
-                      ↓ {seb.permeableCoolingPotentialC}°C Cooling
+                  <div className="flex items-center justify-between border-b border-[#E2E8E5] py-1">
+                    <span className="text-[#162220] font-medium flex items-center gap-1.5">
+                      <span>💧</span> Permeable Pavements & Misting
+                    </span>
+                    <span className="font-mono text-xs font-bold text-[#2E684A]">
+                      ↓ {seb.permeableCoolingPotentialC}°C
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between pt-0.5">
-                    <div className="text-[#162220] flex items-center gap-1.5">
-                      <span className="text-sm">💨</span>
-                      <div>
-                        <strong>Align Wind Ventilation Corridors</strong>
-                        <span className="hidden sm:inline text-[9px] text-[#5C6E6A] ml-1.5">— Channels cooling breezes through dense street canyons</span>
-                      </div>
-                    </div>
-                    <span className="font-mono text-[10px] font-bold text-[#2E684A] whitespace-nowrap">
-                      ↓ {seb.ventilationCoolingPotentialC}°C Cooling
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-[#162220] font-medium flex items-center gap-1.5">
+                      <span>💨</span> Wind Corridor & Street Ventilation
+                    </span>
+                    <span className="font-mono text-xs font-bold text-[#2E684A]">
+                      ↓ {seb.ventilationCoolingPotentialC}°C
                     </span>
                   </div>
                 </div>
@@ -396,30 +387,30 @@ export default function DriverAnalysisView({
                     <strong className="text-[#174D46]">{seb.netRadiationWm2} W/m²</strong>
                   </div>
                   <div className="font-mono text-[10px] text-[#162220] flex justify-between">
-                    <span className="text-[#5C6E6A]">Stored in Buildings / Roads:</span>
+                    <span className="text-[#5C6E6A]">Stored in Built Mass:</span>
                     <strong className="text-[#D9822B]">{seb.groundStorageWm2} W/m² ({seb.storageFractionPct}%)</strong>
                   </div>
                   <div className="font-mono text-[10px] text-[#162220] flex justify-between">
-                    <span className="text-[#5C6E6A]">Physics Conservation Check:</span>
+                    <span className="text-[#5C6E6A]">Conservation Check:</span>
                     <strong className="text-[#2E684A]">100% Balanced (&lt; {seb.pinnResidualWm2 || 2.5} W/m²)</strong>
                   </div>
                 </div>
 
                 <div className="border border-[#E2E8E5] bg-[#FAFBFA] p-2.5 rounded-xs space-y-1">
                   <div className="font-mono text-[8px] uppercase tracking-wider text-[#174D46] font-bold">
-                    🎯 RECOMMENDED IMPLEMENTATION STEPS
+                    🎯 RECOMMENDED ACTION STEPS
                   </div>
                   <div className="text-[10px] text-[#162220] space-y-0.5 leading-snug">
-                    <p>• <strong>Immediate (0–30 Days):</strong> Paint top public roofs white & install shade awnings</p>
-                    <p>• <strong>Medium Term (1–6 Months):</strong> Plant dense Miyawaki green patches in open corners</p>
-                    <p>• <strong>Long Term (6–12 Months):</strong> Open air pathways and convert parking to permeable pavers</p>
+                    <p>• <strong>Phase 1:</strong> Cool roof whitewash & shade trellises</p>
+                    <p>• <strong>Phase 2:</strong> Miyawaki green pockets in barren lots</p>
+                    <p>• <strong>Phase 3:</strong> Ventilation corridor & permeable ground</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <p className="border-t border-[#EDF2EF] pt-2 font-mono text-[8px] text-[#6B7D79] leading-relaxed">
-              * Calculated dynamically from live area satellite telemetry (Sunlight absorption, building density: {activeHotspot.builtFraction}, tree cover: {activeHotspot.canopyCover}) to give municipal teams clear, actionable cooling targets.
+              * Computed dynamically from satellite telemetry (Albedo: {activeHotspot.albedo}, Built: {activeHotspot.builtFraction}, Canopy: {activeHotspot.canopyCover}, SVF: {activeHotspot.skyView}) via PINN energy balance.
             </p>
           </div>
         </div>
